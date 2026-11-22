@@ -17,6 +17,7 @@
 - [후원 켜기](#후원-켜기)
 - [여러 인스턴스로 실행하기](#여러-인스턴스로-실행하기)
 - [공개 서버(OCI 무료 VM)](#공개-서버oci-무료-vm)
+- [방송 목록 API](#방송-목록-api)
 - [환경변수](#환경변수)
 - [기술 구성](#기술-구성)
 - [이 프로젝트의 출발점](#이-프로젝트의-출발점)
@@ -107,12 +108,52 @@ oci session authenticate --profile-name tadak --region ap-singapore-1   # 브라
 deploy/oci/preflight.sh                                      # 무료 한도 점검(아무것도 만들지 않음)
 TADAK_BUDGET_EMAIL=<알림 주소> deploy/oci/budget.sh          # 과금 알림
 deploy/oci/provision.sh                                      # 네트워크·VM·예약 IP·Caddy·deploy 사용자(재실행 안전)
-deploy/oci/verify.sh --app                                   # 외부에서 HTTPS·앱·헬스·쿠키 확인
+deploy/oci/verify.sh --app                                   # 외부에서 HTTPS·앱·헬스·쿠키·목록 API 확인
 ```
 
 GitHub에는 Secret `VM_SSH_KEY`(CI 배포 키 `~/.ssh/tadak_deploy` 의 비밀 키), `TOSS_CLIENT_KEY`, `TOSS_SECRET_KEY`(선택: `CHZZK_TURN_URL`, `CHZZK_TURN_USERNAME`, `CHZZK_TURN_CREDENTIAL`)와 변수 `TADAK_HOST`, `VM_SSH_KNOWN_HOSTS` 를 둡니다. 비밀 값의 원본은 GitHub Secrets이고, 배포할 때마다 VM의 `/opt/tadak/.env`(권한 600)에 다시 씁니다. 수동 재배포는 `gh workflow run deploy.yml` 입니다.
 
 **한계:** TURN 서버가 없어서 서로 다른 네트워크(예: LTE 방송자와 집 Wi-Fi 시청자) 사이에서는 라이브 영상이 안 올 수 있습니다. 녹화방송은 영향이 없습니다. 자체 도메인(`zoek.im`)은 등록이 끝나면 옮길 예정입니다.
+
+## 방송 목록 API
+
+데스크톱 앱 같은 클라이언트가 방송 목록을 받아 자기 화면에 그리고, 녹화방송은 직접 재생하도록 공개 API를 둡니다. 로그인이 필요 없고 읽기만 합니다. 계약 전체는 [SPEC-broadcast-api.md](SPEC-broadcast-api.md)에 있습니다.
+
+```bash
+curl -s https://129-221-138-89.sslip.io/api/broadcasts | jq
+```
+
+```json
+{
+  "live": [
+    { "id": 3, "title": "저녁 산책 라이브", "ownerNickname": "타닥이", "status": "ON_AIR",
+      "startedAt": "2026-11-22T10:20:00Z", "endedAt": null, "viewerCount": 2, "viewerCapacity": 5,
+      "watchUrl": "https://129-221-138-89.sslip.io/live/3" }
+  ],
+  "recorded": [
+    { "id": 2, "title": "첫 녹화", "ownerNickname": "타닥이", "registeredAt": "2026-11-22T10:03:00Z",
+      "videoSource": "UPLOADED", "playbackUrl": "https://129-221-138-89.sslip.io/videos/….mp4",
+      "watchUrl": "https://129-221-138-89.sslip.io/broadcasts/2" }
+  ]
+}
+```
+
+| 필드 | 설명 |
+| --- | --- |
+| `live[]` | 라이브 방송. 방송 중(`status: ON_AIR`)이 먼저, 그다음 종료(`ENDED`), 각각 최신순(웹 목록과 같음) |
+| `recorded[]` | 녹화방송, 최신순 |
+| `id`, `title` | 방송 번호와 제목 |
+| `ownerNickname` | 방송한 회원의 닉네임. 소유자 없는 옛 방송은 `null` |
+| `startedAt` / `endedAt` / `registeredAt` | ISO-8601 UTC 시각(`…Z`). 방송 중이면 `endedAt` 은 `null` |
+| `viewerCount` / `viewerCapacity` | 지금 보고 있는 시청자 수와 정원. 종료된 라이브는 `viewerCount: 0` |
+| `videoSource` | `UPLOADED`(이 서버에 올린 영상) 또는 `EXTERNAL`(다른 곳의 영상 주소) |
+| `playbackUrl` | 녹화 영상 주소. 올린 영상은 이 서버의 절대 주소이고 `Range` 요청(`206`)으로 탐색할 수 있습니다. 외부 영상은 등록한 주소 그대로 |
+| `watchUrl` | 웹 시청 화면의 절대 주소. 라이브 시청·로그인·댓글·후원은 이 화면에서 합니다 |
+
+- 주소는 요청을 받은 주소 기준으로 만듭니다. 공개 서버에서는 `https://` 공개 주소가 됩니다.
+- 회원 번호와 로그인 아이디는 넣지 않습니다.
+- 다른 출처(예: 데스크톱 앱 웹뷰 `tauri://localhost`)에서 `fetch` 할 수 있도록 `/api/**` 의 `GET` 은 모든 출처를 허용합니다(CORS). 쿠키는 실리지 않습니다. 화면 경로는 CORS를 열지 않습니다.
+- 필드는 추가만 하고 이름이나 뜻을 바꾸지 않습니다. 클라이언트는 모르는 필드를 무시하면 됩니다.
 
 ## 환경변수
 
