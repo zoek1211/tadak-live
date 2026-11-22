@@ -80,6 +80,31 @@ class DownloadPageWebTest {
         void 휴대폰은_브라우저로_쓰라고_안내한다() throws Exception {
             assertThat(page(context)).contains("iPhone", "Android", "브라우저");
         }
+
+        @Test
+        void 머리글_메뉴_맨_오른쪽에_앱_받기_링크가_있다_로그인_전() throws Exception {
+            String html = TestWeb.mvc(context).perform(get("/broadcasts")).andReturn().getResponse().getContentAsString();
+            String menu = html.substring(html.indexOf("header-actions"), html.indexOf("</nav>"));
+            assertThat(menu).contains("href=\"/download\"");
+            assertThat(menu.indexOf("앱 받기")).isGreaterThan(menu.indexOf("회원가입"));
+        }
+
+        @Test
+        void 머리글_메뉴_맨_오른쪽에_앱_받기_링크가_있다_로그인_후() throws Exception {
+            var mvc = TestWeb.mvc(context);
+            var member = MemberSessions.signUpAs(mvc, "앱받기확인");
+            String html = mvc.perform(get("/broadcasts").session(member)).andReturn().getResponse().getContentAsString();
+            String menu = html.substring(html.indexOf("header-actions"), html.indexOf("</nav>"));
+            assertThat(menu).contains("href=\"/download\"");
+            assertThat(menu.indexOf("앱 받기")).isGreaterThan(menu.indexOf("로그아웃"));
+        }
+
+        @Test
+        void OS_카드에_추천_표시용_표식과_스크립트가_있고_서버는_표시를_미리_붙이지_않는다() throws Exception {
+            String html = page(context);
+            assertThat(html).contains("data-os=\"windows\"", "data-os=\"mac\"", "이 컴퓨터용");
+            assertThat(html).doesNotContain("download-card recommended");
+        }
     }
 
     @Nested

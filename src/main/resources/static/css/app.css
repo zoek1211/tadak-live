@@ -425,3 +425,5 @@ h2 { font-size: 1.25rem; font-weight: 700; margin: 0; }
 .install-steps ol { padding-left: 1.4em; display: flex; flex-direction: column; gap: 8px; }
 .install-steps pre { background: var(--deep); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; overflow-x: auto; }
 .install-steps code { font-size: 0.9em; }
+.download-card.recommended { border-color: var(--accent); }
+.recommend { position: absolute; top: 20px; right: 20px; padding: 2px 10px; border-radius: 999px; background: var(--accent); color: var(--accent-text); font-size: 0.8125rem; font-weight: 700; }

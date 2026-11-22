@@ -12,11 +12,13 @@
 
     <section class="download-grid" aria-label="설치 파일">
         <article class="download-card" data-os="windows">
+            <span class="recommend" hidden>이 컴퓨터용</span>
             <h2>Windows</h2>
             <p class="meta">Windows 10·11 (x64) · 설치 파일 .exe · 약 4MB</p>
             <a class="button button-large" th:href="${downloads.windowsUrl()}" href="#">Windows용 받기</a>
         </article>
         <article class="download-card" data-os="mac">
+            <span class="recommend" hidden>이 컴퓨터용</span>
             <h2>macOS</h2>
             <p class="meta">macOS 11 이상 · Apple Silicon·Intel 겸용 · 디스크 이미지 .dmg · 약 9MB</p>
             <a class="button button-large" th:href="${downloads.macosUrl()}" href="#">macOS용 받기</a>
@@ -58,5 +60,20 @@
             라이브 송출(불 피우기)도 휴대폰 브라우저에서 합니다.</p>
     </section>
 </main>
+<script th:inline="none">
+    // 이 컴퓨터의 OS 카드에 "이 컴퓨터용" 표시(브라우저에서만, 없어도 두 카드는 똑같이 쓸 수 있다). 서버는 User-Agent 를 보지 않는다.
+    (function () {
+        var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+        var agent = navigator.userAgent || "";
+        var os = /win/i.test(platform) ? "windows"
+            : /mac/i.test(platform) && !/iPhone|iPad|iPod/.test(agent) && navigator.maxTouchPoints < 2 ? "mac"
+            : null;
+        if (!os) return;
+        var card = document.querySelector('.download-card[data-os="' + os + '"]');
+        if (!card) return;
+        card.classList.add("recommended");
+        card.querySelector(".recommend").hidden = false;
+    })();
+</script>
 </body>
 </html>
