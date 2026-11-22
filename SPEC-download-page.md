@@ -1,6 +1,6 @@
 # Spec: download-page — V1
 
-Status: approved (2026-11-22) · 모듈 지도: `CAPABILITY-MAP.md` · 의도: `docs/intent/oci-deploy.md`("다운로드 페이지") · 가리키는 파일: `SPEC-desktop-app.md`(implemented, Release `desktop-v0.1.N`)
+Status: implemented (2026-11-22) · 모듈 지도: `CAPABILITY-MAP.md` · 의도: `docs/intent/oci-deploy.md`("다운로드 페이지") · 가리키는 파일: `SPEC-desktop-app.md`(implemented, Release `desktop-v0.1.N`)
 
 ## Objective
 
