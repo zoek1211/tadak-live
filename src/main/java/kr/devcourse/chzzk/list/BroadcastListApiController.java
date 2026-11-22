@@ -5,6 +5,7 @@ import java.util.List;
 import kr.devcourse.chzzk.broadcast.RecordedBroadcast;
 import kr.devcourse.chzzk.broadcast.RecordedBroadcastService;
 import kr.devcourse.chzzk.broadcast.VideoSource;
+import kr.devcourse.chzzk.live.LiveAudience;
 import kr.devcourse.chzzk.live.LiveBroadcast;
 import kr.devcourse.chzzk.live.LiveBroadcastService;
 import kr.devcourse.chzzk.live.LiveStatus;
@@ -25,7 +26,7 @@ class BroadcastListApiController {
     }
 
     record LiveItem(Long id, String title, String ownerNickname, LiveStatus status,
-                    Instant startedAt, Instant endedAt, String watchUrl) {
+                    Instant startedAt, Instant endedAt, int viewerCount, int viewerCapacity, String watchUrl) {
     }
 
     record RecordedItem(Long id, String title, String ownerNickname, Instant registeredAt,
@@ -33,10 +34,13 @@ class BroadcastListApiController {
     }
 
     private final LiveBroadcastService liveBroadcasts;
+    private final LiveAudience audience;
     private final RecordedBroadcastService recordedBroadcasts;
 
-    BroadcastListApiController(LiveBroadcastService liveBroadcasts, RecordedBroadcastService recordedBroadcasts) {
+    BroadcastListApiController(LiveBroadcastService liveBroadcasts, LiveAudience audience,
+                               RecordedBroadcastService recordedBroadcasts) {
         this.liveBroadcasts = liveBroadcasts;
+        this.audience = audience;
         this.recordedBroadcasts = recordedBroadcasts;
     }
 
@@ -49,7 +53,8 @@ class BroadcastListApiController {
 
     private LiveItem toItem(LiveBroadcast live) {
         return new LiveItem(live.getId(), live.getTitle(), nicknameOf(live.getOwner()), live.getStatus(),
-                live.getStartedAt(), live.getEndedAt(), absolute("/live/" + live.getId()));
+                live.getStartedAt(), live.getEndedAt(), audience.count(live), audience.capacity(),
+                absolute("/live/" + live.getId()));
     }
 
     private RecordedItem toItem(RecordedBroadcast broadcast) {

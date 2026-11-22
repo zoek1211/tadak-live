@@ -29,7 +29,8 @@ import org.springframework.web.context.WebApplicationContext;
 /**
  * 데스크톱 앱 등 클라이언트용 방송 목록 API(GET /api/broadcasts). 비로그인 공개, 웹 목록과 같은 범위·순서,
  * 앱이 서버 밖에서 쓰도록 재생·시청 주소는 요청(프록시 헤더) 기준 절대 주소. 회원 DB id·로그인 아이디는 넣지 않는다.
- * 테스트끼리 한 서버·DB를 쓰므로 각 테스트는 자기가 만든 방송(고유 제목)만 골라 확인한다. 빈 목록은 {@link BroadcastListApiEmptyTest}.
+ * 테스트끼리 한 서버·DB를 쓰므로 각 테스트는 자기가 만든 방송(고유 제목)만 골라 확인한다. 빈 목록은 {@link BroadcastListApiEmptyTest},
+ * 시청자 수는 {@link BroadcastListApiViewerTest}(실제 WebSocket·HTTP만 쓰는 클래스: MockMvc의 csrf()가 같은 컨텍스트의 CSRF 저장소를 바꿔 실제 POST가 403이 되므로 섞지 않는다).
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class BroadcastListApiTest {
