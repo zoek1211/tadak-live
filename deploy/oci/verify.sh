@@ -8,6 +8,7 @@
 #  --app(앱 배포 뒤): 5) / 가 https 의 /broadcasts 로 가고 200, "타닥 라이브" 화면  6) /actuator/health UP  7) /actuator/env 404
 #                     8) 로그인 세션 쿠키(JSESSIONID)에 Secure
 #                     9) /api/broadcasts 200, live·recorded 배열, 서버 주소가 모두 https://<host>/, 다른 출처 CORS 허용
+#                     10) /download 200, Windows·macOS 설치 파일 링크가 실제로 내려받아짐(Release 고정 주소)
 # 필요 도구: curl, openssl(--app 은 jq 도). 주소는 deploy/oci/.state.env 의 TADAK_HOST, PUBLIC_IP.
 # 선택 환경변수: TADAK_ALLOW_STAGING=1(스테이징 인증서 허용, 1번은 -k)
 set -uo pipefail
@@ -112,6 +113,23 @@ if [[ $APP -eq 1 ]]; then
     fail "/api/broadcasts 에 CORS 허용 헤더가 없습니다"
   fi
   rm -f "$api_headers"
+  # 10) 앱 받기 페이지: 링크 두 개를 페이지에서 꺼내 실제로 내려받아지는지(리다이렉트 따라가 200) 확인
+  download="$(curl -sS --max-time 10 -w '\n%{http_code}' "https://$TADAK_HOST/download" 2>&1)"
+  if [[ "${download##*$'\n'}" != "200" ]]; then
+    fail "/download 응답 코드 ${download##*$'\n'}"
+  else
+    links="$(grep -oE 'href="[^"]+/Tadak-Live-(windows-x64-setup\.exe|macos-universal\.dmg)"' <<<"$download" | sed 's/^href="//; s/"$//' | sort -u)"
+    if [[ "$(grep -c . <<<"$links")" -ne 2 ]]; then
+      fail "/download 에 설치 파일 링크 두 개가 없습니다"
+    else
+      bad_links=""
+      while IFS= read -r link; do
+        code="$(curl -s -o /dev/null -I -L --max-time 20 -w '%{http_code}' "$link")"
+        [[ "$code" == "200" ]] || bad_links+=" $link($code)"
+      done <<<"$links"
+      if [[ -z "$bad_links" ]]; then pass "/download 200, 설치 파일 링크 2개 내려받기 가능"; else fail "내려받을 수 없는 링크:$bad_links"; fi
+    fi
+  fi
 fi
 
 if [[ $FAILED -eq 0 ]]; then
