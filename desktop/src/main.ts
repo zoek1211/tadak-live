@@ -64,7 +64,7 @@ async function load(): Promise<void> {
 function start(): void {
   document.title = APP_TITLE;
   renderHeaderActions(document.getElementById("header-actions")!, API_BASE, {
-    openLogin: (url) => void openInApp(url, "로그인"),
+    openWeb: (url, title) => void openInApp(url, title),
   });
   render();
   void load();
