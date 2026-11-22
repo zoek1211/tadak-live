@@ -18,6 +18,7 @@
 - [여러 인스턴스로 실행하기](#여러-인스턴스로-실행하기)
 - [공개 서버(OCI 무료 VM)](#공개-서버oci-무료-vm)
 - [방송 목록 API](#방송-목록-api)
+- [데스크톱 앱](#데스크톱-앱)
 - [환경변수](#환경변수)
 - [기술 구성](#기술-구성)
 - [이 프로젝트의 출발점](#이-프로젝트의-출발점)
@@ -155,6 +156,35 @@ curl -s https://129-221-138-89.sslip.io/api/broadcasts | jq
 - 다른 출처(예: 데스크톱 앱 웹뷰 `tauri://localhost`)에서 `fetch` 할 수 있도록 `/api/**` 의 `GET` 은 모든 출처를 허용합니다(CORS). 쿠키는 실리지 않습니다. 화면 경로는 CORS를 열지 않습니다.
 - 필드는 추가만 하고 이름이나 뜻을 바꾸지 않습니다. 클라이언트는 모르는 필드를 무시하면 됩니다.
 
+## 데스크톱 앱
+
+Windows·macOS용 앱입니다. 공개 서버의 [방송 목록 API](#방송-목록-api)로 "지금 타는 중"·"다시 보기"를 보여 주고, 녹화방송은 앱 안에서 바로 재생합니다(앞뒤로 넘기기 가능). 라이브 시청·로그인·댓글·장작 넣기는 웹 화면을 **앱 안 새 창**으로 열어 씁니다. 상단 **로그인**도 웹 로그인 화면을 앱 창으로 열고, 앱의 웹 창들은 로그인 상태를 함께 씁니다. 앱 창에서 막히는 일이 있으면 라이브 카드와 플레이어의 **브라우저로 열기**를 쓰세요.
+
+| 운영체제 | 파일 |
+| --- | --- |
+| Windows 10·11 (x64) | [Tadak-Live-windows-x64-setup.exe](https://github.com/zoek1211/tadak-live/releases/latest/download/Tadak-Live-windows-x64-setup.exe) |
+| macOS 11 이상 (Apple Silicon·Intel 겸용) | [Tadak-Live-macos-universal.dmg](https://github.com/zoek1211/tadak-live/releases/latest/download/Tadak-Live-macos-universal.dmg) |
+
+코드 서명을 하지 않은 앱이라(유료 인증서가 필요해 쓰지 않음) 처음 열 때 경고가 뜹니다.
+
+- **macOS:** "확인되지 않은 개발자" 경고가 뜨면 Finder에서 앱을 Control-클릭 → **열기**를 고르거나, **시스템 설정 → 개인정보 보호 및 보안**에서 **그래도 열기**를 누르세요.
+- **Windows:** SmartScreen 창에서 **추가 정보 → 실행**을 누르세요.
+
+**배포:** `desktop/` 이 바뀐 커밋이 `main` 에 들어가면 [.github/workflows/desktop.yml](.github/workflows/desktop.yml)이 Windows·macOS 설치 파일을 만들어 GitHub Release `desktop-v0.1.<실행 번호>` 에 올리고 최신(latest)으로 표시합니다. 위 링크는 항상 최신 파일을 가리킵니다. PR에서는 테스트와 빌드만 돌고 릴리스는 하지 않습니다. 앱이 붙는 서버 주소는 빌드할 때 저장소 변수 `TADAK_HOST` 로 정합니다.
+
+**로컬에서 실행·빌드**(필요한 것: Rust, Node.js, pnpm):
+
+```bash
+cd desktop
+pnpm install
+pnpm test && pnpm typecheck
+pnpm tauri dev                                                  # 공개 서버에 붙는 개발 모드 앱
+VITE_TADAK_API_BASE=http://localhost:8080 pnpm tauri dev         # 로컬 서버(./gradlew bootRun)에 붙이기
+pnpm tauri build --target universal-apple-darwin --bundles dmg   # macOS 설치 파일
+```
+
+코드는 [desktop/](desktop/)에 있습니다(Tauri 2 + TypeScript, 프레임워크 없음). 설계와 완료 기준은 [SPEC-desktop-app.md](SPEC-desktop-app.md)에 있습니다.
+
 ## 환경변수
 
 모두 선택 사항이고, 예시는 [.env.example](.env.example)에 있습니다. 비밀 값(TURN 자격 증명, 키스토어 비밀번호, 토스 시크릿 키, DB 비밀번호)은 커밋하지 말고 실행 환경에서만 설정하세요. 변수 이름의 `CHZZK_` 접두어는 출발점이었던 과제 이름을 그대로 쓴 것입니다.
@@ -181,6 +211,7 @@ curl -s https://129-221-138-89.sslip.io/api/broadcasts | jq
 - Java 25, Spring Boot 4.1, Spring MVC + Thymeleaf, Spring Data JPA, Spring WebSocket, Spring Security(세션 로그인·CSRF)
 - 저장소: 단독 실행은 파일 기반 H2 + 로컬 디스크, 클러스터 실행은 Postgres + Redis + 공유 볼륨
 - 배포: OCI Always Free VM, Docker Compose(앱 + Caddy), GitHub Actions → GHCR
+- 데스크톱 앱: Tauri 2 + TypeScript(Vite), GitHub Actions → GitHub Releases
 - 설계 결정: [docs/adr/](docs/adr/)
   - [WebRTC P2P 라이브](docs/adr/0001-webrtc-p2p-live.md)
   - [송출 키 대신 로그인한 소유자 검사](docs/adr/0002-live-owner-session-replaces-broadcast-key.md)
