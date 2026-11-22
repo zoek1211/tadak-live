@@ -1,6 +1,6 @@
 # Spec: desktop-app — V1
 
-Status: approved (2026-11-22) · 모듈 지도: `CAPABILITY-MAP.md` · 의도: `docs/intent/oci-deploy.md`(B 방식: 자체 화면) · 쓰는 API: `SPEC-broadcast-api.md`(implemented)
+Status: implemented (2026-11-22, 완료 기준 9번 Windows 실기기 확인은 보류) · 모듈 지도: `CAPABILITY-MAP.md` · 의도: `docs/intent/oci-deploy.md`(B 방식: 자체 화면) · 쓰는 API: `SPEC-broadcast-api.md`(implemented)
 
 ## Objective
 
