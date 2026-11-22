@@ -107,3 +107,9 @@ button.ghost:hover { color: var(--text); }
 .player-view { max-width: 960px; }
 .player { display: block; width: 100%; aspect-ratio: 16 / 9; margin-top: 12px; background: #000; border-radius: 12px; }
 .player-view .primary { margin-top: 16px; background: var(--ember); }
+
+.card-wrap { display: flex; flex-direction: column; align-items: flex-start; }
+button.link { background: none; border: none; padding: 4px 0; color: var(--muted); font: inherit; font-size: 0.8125rem; text-decoration: underline; cursor: pointer; }
+button.link:hover { color: var(--text); }
+.actions { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.player-view .actions .primary { margin-top: 0; }

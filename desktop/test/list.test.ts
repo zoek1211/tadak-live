@@ -3,7 +3,7 @@ import { parseBroadcastList } from "../src/api";
 import { onAirLives, renderList } from "../src/list";
 import { sampleResponse } from "./fixtures";
 
-const handlers = () => ({ onOpenLive: vi.fn(), onOpenRecorded: vi.fn(), onRetry: vi.fn() });
+const handlers = () => ({ onOpenLive: vi.fn(), onOpenLiveInBrowser: vi.fn(), onOpenRecorded: vi.fn(), onRetry: vi.fn() });
 
 describe("onAirLives", () => {
   it("방송 중인 라이브만 남긴다(종료는 앱에서 볼 게 없음)", () => {
@@ -39,6 +39,15 @@ describe("renderList", () => {
     (root.querySelector("[data-recorded-id='1']") as HTMLElement).click();
     expect(h.onOpenLive).toHaveBeenCalledWith(expect.objectContaining({ id: 3 }));
     expect(h.onOpenRecorded).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }));
+  });
+
+  it("라이브마다 브라우저로 열기 버튼이 있고 누르면 그 라이브로 처리기를 부른다", () => {
+    const h = handlers();
+    renderList(root, { kind: "ok", data: parseBroadcastList(sampleResponse) }, h);
+    const browser = [...root.querySelectorAll("button")].find((b) => b.textContent === "브라우저로 열기")!;
+    browser.click();
+    expect(h.onOpenLiveInBrowser).toHaveBeenCalledWith(expect.objectContaining({ id: 3 }));
+    expect(h.onOpenLive).not.toHaveBeenCalled();
   });
 
   it("제목에 HTML을 넣어도 글자로 보인다", () => {

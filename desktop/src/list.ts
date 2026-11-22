@@ -10,6 +10,7 @@ export type ListState =
 
 export interface ListHandlers {
   onOpenLive(item: LiveItem): void;
+  onOpenLiveInBrowser(item: LiveItem): void;
   onOpenRecorded(item: RecordedItem): void;
   onRetry(): void;
 }
@@ -26,7 +27,7 @@ function card(onClick: () => void, attrs: Record<string, string>, children: Node
 }
 
 function liveCard(item: LiveItem, h: ListHandlers): HTMLElement {
-  return card(() => h.onOpenLive(item), { "data-live-id": String(item.id) }, [
+  const main = card(() => h.onOpenLive(item), { "data-live-id": String(item.id) }, [
     el("div", { className: "thumb" }, [
       el("span", { className: "badge live", text: "타는 중" }),
       el("span", { className: "chip", text: `불가에 ${item.viewerCount}명` }),
@@ -34,6 +35,10 @@ function liveCard(item: LiveItem, h: ListHandlers): HTMLElement {
     el("div", { className: "card-title", text: item.title }),
     el("div", { className: "card-meta", text: item.ownerNickname ?? "알 수 없는 방송자" }),
   ]);
+  // 앱 안 웹 창에서 막히는 경우(결제 팝업 등)를 위한 우회
+  const browser = el("button", { className: "link", text: "브라우저로 열기", attrs: { type: "button" } });
+  browser.addEventListener("click", () => h.onOpenLiveInBrowser(item));
+  return el("div", { className: "card-wrap" }, [main, browser]);
 }
 
 function recordedCard(item: RecordedItem, h: ListHandlers): HTMLElement {

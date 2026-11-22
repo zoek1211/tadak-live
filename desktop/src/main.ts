@@ -5,6 +5,7 @@ import { API_BASE } from "./config";
 import type { RecordedItem } from "./api";
 import { renderList, type ListHandlers, type ListState } from "./list";
 import { renderPlayer } from "./player";
+import { openInApp, openInBrowser } from "./web";
 
 export const APP_TITLE = "타닥 라이브";
 const REFRESH_MS = 30_000;
@@ -15,7 +16,8 @@ let playing: RecordedItem | null = null;
 let loading = false;
 
 const handlers: ListHandlers = {
-  onOpenLive: () => {},
+  onOpenLive: (item) => void openInApp(item.watchUrl, item.title),
+  onOpenLiveInBrowser: (item) => void openInBrowser(item.watchUrl),
   onOpenRecorded: (item) => {
     playing = item;
     render();
@@ -34,7 +36,8 @@ function render(): void {
         playing = null;
         render();
       },
-      onOpenWeb: () => {},
+      onOpenWeb: (item) => void openInApp(item.watchUrl, item.title),
+      onOpenInBrowser: (item) => void openInBrowser(item.watchUrl),
     });
     return;
   }

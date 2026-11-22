@@ -6,6 +6,7 @@ import { formatTime } from "./format";
 export interface PlayerHandlers {
   onBack(): void;
   onOpenWeb(item: RecordedItem): void;
+  onOpenInBrowser(item: RecordedItem): void;
 }
 
 function button(text: string, className: string, onClick: () => void): HTMLButtonElement {
@@ -33,7 +34,10 @@ export function renderPlayer(root: HTMLElement, item: RecordedItem, h: PlayerHan
         className: "card-meta",
         text: `${item.ownerNickname ?? "알 수 없는 방송자"} · ${formatTime(item.registeredAt)}`,
       }),
-      button("댓글·장작 넣기는 웹에서", "primary", () => h.onOpenWeb(item)),
+      el("div", { className: "actions" }, [
+        button("댓글·장작 넣기는 웹에서", "primary", () => h.onOpenWeb(item)),
+        button("브라우저로 열기", "link", () => h.onOpenInBrowser(item)),
+      ]),
     ]),
   );
 }
