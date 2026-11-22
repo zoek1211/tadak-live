@@ -1,0 +1,140 @@
+name: Desktop
+
+# 데스크톱 앱(desktop/). PR: 테스트·타입 검사 + Windows·macOS 빌드(릴리스 없음).
+# main 푸시(desktop/** 변경): 같은 빌드 후 GitHub Release desktop-v0.1.<실행 번호>(latest)에 고정 이름 파일을 올린다.
+# 다운로드 고정 주소: https://github.com/<저장소>/releases/latest/download/<파일 이름>
+on:
+  pull_request:
+    paths: ["desktop/**", ".github/workflows/desktop.yml"]
+  push:
+    branches: [main]
+    paths: ["desktop/**", ".github/workflows/desktop.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  WINDOWS_FILE: Tadak-Live-windows-x64-setup.exe
+  MACOS_FILE: Tadak-Live-macos-universal.dmg
+  # main 에서만 릴리스 버전을 붙인다. PR 빌드는 tauri.conf.json 의 기본 버전 그대로
+  RELEASE: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+  APP_VERSION: 0.1.${{ github.run_number }}
+
+defaults:
+  run:
+    working-directory: desktop
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: desktop/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - name: 의존성
+        run: pnpm install --frozen-lockfile
+      - name: 테스트
+        run: pnpm test
+      - name: 타입 검사
+        run: pnpm typecheck
+
+  build:
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            rust_targets: x86_64-pc-windows-msvc
+            bundles: nsis
+          - os: macos-latest
+            target: universal-apple-darwin
+            rust_targets: aarch64-apple-darwin,x86_64-apple-darwin
+            bundles: dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: desktop/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+          cache-dependency-path: desktop/pnpm-lock.yaml
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust_targets }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+      - name: 의존성
+        run: pnpm install --frozen-lockfile
+      - name: 릴리스 버전 넣기(main)
+        if: env.RELEASE == 'true'
+        shell: bash
+        run: |
+          node -e '
+            const fs = require("fs");
+            for (const f of ["package.json", "src-tauri/tauri.conf.json"]) {
+              const j = JSON.parse(fs.readFileSync(f, "utf8"));
+              j.version = process.env.APP_VERSION;
+              fs.writeFileSync(f, JSON.stringify(j, null, 2) + "\n");
+            }'
+      - name: 빌드
+        shell: bash
+        env:
+          VITE_TADAK_API_BASE: https://${{ vars.TADAK_HOST }}
+        run: pnpm tauri build --target "${{ matrix.target }}" --bundles "${{ matrix.bundles }}" --ci
+      - name: 고정 이름으로 모으기
+        shell: bash
+        run: |
+          mkdir -p ../out
+          bundle="src-tauri/target/${{ matrix.target }}/release/bundle"
+          if [ "${{ matrix.bundles }}" = nsis ]; then
+            src="$(find "$bundle/nsis" -maxdepth 1 -name '*.exe' | head -n 1)"; dest="$WINDOWS_FILE"
+          else
+            src="$(find "$bundle/dmg" -maxdepth 1 -name '*.dmg' | head -n 1)"; dest="$MACOS_FILE"
+          fi
+          test -n "$src"
+          cp "$src" "../out/$dest"
+          ls -l ../out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          path: out/*
+          if-no-files-found: error
+
+  release:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: GitHub Release(latest)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: desktop-v${{ env.APP_VERSION }}
+        run: |
+          ls -l out
+          test -f "out/$WINDOWS_FILE" && test -f "out/$MACOS_FILE"
+          gh release create "$TAG" "out/$WINDOWS_FILE" "out/$MACOS_FILE" \
+            --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+            --title "타닥 라이브 데스크톱 $APP_VERSION" \
+            --notes "Windows x64(설치 파일)와 macOS 유니버설(Apple Silicon·Intel). 코드 서명이 없어 처음 실행할 때 경고가 뜹니다. 서버: https://${{ vars.TADAK_HOST }}"

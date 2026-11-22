@@ -42,6 +42,12 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "macOS": {
+      "signingIdentity": "-",
+      "minimumSystemVersion": "11.0"
+    },
+    "shortDescription": "타닥 라이브 데스크톱 앱",
+    "copyright": "zoek1211"
   }
 }
