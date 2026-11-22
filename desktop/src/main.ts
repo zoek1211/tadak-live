@@ -1,17 +1,24 @@
 /** 앱 진입점: 목록을 불러와 그리고, 30초마다·창이 다시 앞으로 올 때 새로 불러온다. */
 import { ApiError, fetchBroadcasts } from "./api";
 import { API_BASE } from "./config";
+import type { RecordedItem } from "./api";
 import { renderList, type ListHandlers, type ListState } from "./list";
+import { renderPlayer } from "./player";
 
 export const APP_TITLE = "타닥 라이브";
 const REFRESH_MS = 30_000;
 
 let state: ListState = { kind: "loading" };
+/** 지금 보는 녹화방송(없으면 목록 화면). 플레이어를 보는 동안 목록 새로 고침이 화면을 덮지 않는다. */
+let playing: RecordedItem | null = null;
 let loading = false;
 
 const handlers: ListHandlers = {
   onOpenLive: () => {},
-  onOpenRecorded: () => {},
+  onOpenRecorded: (item) => {
+    playing = item;
+    render();
+  },
   onRetry: () => void load(),
 };
 
@@ -20,6 +27,16 @@ function root(): HTMLElement {
 }
 
 function render(): void {
+  if (playing) {
+    renderPlayer(root(), playing, {
+      onBack: () => {
+        playing = null;
+        render();
+      },
+      onOpenWeb: () => {},
+    });
+    return;
+  }
   renderList(root(), state, handlers);
 }
 
@@ -35,7 +52,7 @@ async function load(): Promise<void> {
     }
   } finally {
     loading = false;
-    render();
+    if (!playing) render();
   }
 }
 
