@@ -1,0 +1,13 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "로컬 앱 화면(main 창)에만 주는 권한. 원격 웹 창(web-*)에는 아무 권한도 주지 않는다(remote 출처 없음).",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-create-webview-window",
+    "core:window:allow-set-focus",
+    "core:window:allow-unminimize",
+    "opener:default"
+  ]
+}

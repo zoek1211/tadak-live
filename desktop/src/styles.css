@@ -1,0 +1,116 @@
+/* 타닥 라이브 브랜드(웹 app.css 와 같은 토큰): 밤·숯·재·불꽃·장작불·연기. 글꼴은 앱에 포함(Noto Sans KR, OFL). */
+:root {
+  --bg: #16120f;
+  --surface: #221c17;
+  --muted: #b8a99a;
+  --accent: #ff7a2f;
+  --ember: #ffc56b;
+  --text: #f5ede4;
+  --text-soft: #d9cbbe;
+  --surface-raised: #2a221c;
+  --border: #3a3029;
+  --accent-text: #1a0f08;
+  --danger: #ff8a7a;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] { display: none !important; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 28px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+.brand { display: inline-flex; align-items: center; gap: 8px; font-size: 1.375rem; font-weight: 700; letter-spacing: -0.02em; }
+.brand span { color: var(--accent); }
+.brand-mark { color: var(--accent); flex: none; }
+.tagline { color: var(--muted); font-size: 0.875rem; }
+
+main { padding: 24px 28px 48px; max-width: 1200px; margin: 0 auto; }
+
+h1 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.3; margin: 16px 0 4px; overflow-wrap: anywhere; }
+h2 { font-size: 1.375rem; font-weight: 700; margin: 0 0 14px; }
+
+.row { margin-bottom: 36px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+
+.card {
+  display: block;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.card:hover .thumb, .card:focus-visible .thumb { outline: 2px solid var(--accent); }
+.card:focus-visible { outline: none; }
+.card-title { font-size: 1.0625rem; font-weight: 700; margin-top: 8px; overflow-wrap: anywhere; }
+.card-meta { color: var(--muted); font-size: 0.875rem; margin: 2px 0 0; }
+
+.thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.badge, .chip {
+  position: absolute;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+.badge { top: 12px; left: 12px; }
+.badge.live { background: var(--accent); color: var(--accent-text); }
+.chip { bottom: 12px; right: 12px; background: rgba(14, 11, 9, 0.8); color: var(--text-soft); }
+
+.empty, .status { color: var(--muted); }
+.status.error { color: var(--danger); }
+.status.error p { margin: 0 0 12px; }
+
+button.primary, button.ghost {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 10px;
+  border: none;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+button.primary { background: var(--accent); color: var(--accent-text); }
+button.primary:hover { filter: brightness(1.08); }
+button.ghost { background: transparent; color: var(--text-soft); padding: 0 6px; }
+button.ghost:hover { color: var(--text); }
+
+.player-view { max-width: 960px; }
+.player { display: block; width: 100%; aspect-ratio: 16 / 9; margin-top: 12px; background: #000; border-radius: 12px; }
+.player-view .primary { margin-top: 16px; background: var(--ember); }
+
+.card-wrap { display: flex; flex-direction: column; align-items: flex-start; }
+button.link { background: none; border: none; padding: 4px 0; color: var(--muted); font: inherit; font-size: 0.8125rem; text-decoration: underline; cursor: pointer; }
+button.link:hover { color: var(--text); }
+.actions { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.player-view .actions .primary { margin-top: 0; }
+.topbar-right { display: inline-flex; align-items: center; gap: 16px; }
