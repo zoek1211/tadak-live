@@ -1,0 +1,20 @@
+# VM(/opt/tadak)에서 돌리는 Compose. provision.sh 가 올리고 docker compose up -d 한다.
+# 인터넷에 여는 것은 Caddy의 80/443(TCP)뿐이다. 앱 컨테이너는 backend-deploy 에서 이 파일에 추가하고 포트를 열지 않는다.
+# .env(provision.sh 가 씀, 권한 600): TADAK_HOST, TADAK_ACME_CA
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file: .env
+    volumes:
+      # 파일이 아니라 디렉터리를 마운트해야 Caddyfile을 바꿔 올렸을 때 컨테이너가 새 내용을 본다
+      - ./caddy:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

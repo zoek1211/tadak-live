@@ -1,0 +1,10 @@
+# 주소와 인증서 발급처는 .env 에서 받는다. HTTP는 Caddy가 자동으로 HTTPS로 넘긴다.
+{
+	# Let's Encrypt만 쓴다(Caddy 기본값은 실패 시 ZeroSSL로 넘어감). 스테이징 확인 때는 provision.sh 가 스테이징 주소를 넣는다.
+	acme_ca {$TADAK_ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
+}
+
+{$TADAK_HOST} {
+	# vm-host 단계의 고정 응답. backend-deploy 에서 reverse_proxy 로 바꾼다.
+	respond "tadak vm ok" 200
+}

@@ -1,0 +1,42 @@
+#cloud-config
+# 인스턴스를 처음 만들 때 한 번만 실행된다. Docker 설치와 OS 방화벽(80/443)만 맡는다.
+# compose.yaml·Caddyfile 같은 설정은 provision.sh 가 SSH로 올린다.
+package_update: true
+packages:
+  - ca-certificates
+  - curl
+  - iptables-persistent
+
+write_files:
+  - path: /usr/local/sbin/tadak-open-web-ports
+    permissions: "0755"
+    content: |
+      #!/bin/sh
+      # OCI Ubuntu 이미지는 INPUT 체인 끝에 REJECT 규칙이 있어 보안 목록만 열면 80/443이 막힌다.
+      # REJECT 앞에 80/443 ACCEPT를 넣고 저장한다. 이미 있으면 건너뛴다.
+      set -eu
+      for port in 80 443; do
+        if ! iptables -C INPUT -p tcp -m state --state NEW --dport "$port" -j ACCEPT 2>/dev/null; then
+          pos="$(iptables -L INPUT --line-numbers -n | awk '$2=="REJECT"{print $1; exit}')"
+          if [ -n "$pos" ]; then
+            iptables -I INPUT "$pos" -p tcp -m state --state NEW --dport "$port" -j ACCEPT
+          else
+            iptables -A INPUT -p tcp -m state --state NEW --dport "$port" -j ACCEPT
+          fi
+        fi
+      done
+      netfilter-persistent save
+
+runcmd:
+  # Docker를 설치하기 전에 방화벽 규칙을 저장해야 Docker가 만드는 규칙이 저장 파일에 섞이지 않는다
+  - /usr/local/sbin/tadak-open-web-ports
+  # Docker 공식 apt 저장소
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - sh -c 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list'
+  - apt-get update
+  - DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - systemctl enable --now docker
+  - usermod -aG docker ubuntu
+  - install -d -o ubuntu -g ubuntu -m 0755 /opt/tadak
