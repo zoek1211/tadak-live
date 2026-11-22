@@ -2,7 +2,7 @@
 
 Source spec: `SPEC-backend-deploy.md` · 모듈 지도: `CAPABILITY-MAP.md` · 이전 모듈 계획: `tasks/plan-vm-host.md`
 
-작업은 GitHub Issues에서 관리한다. 부모 이슈 #9 아래 하위 이슈이고, 순서는 차단(blocked-by) 관계로 걸려 있다. 작업 내용·완료 조건은 각 이슈가 기준이다.
+**상태: 완료(2026-11-22).** #10~#16 모두 닫힘, 스펙 완료 기준 1~11 통과(#16). 작업은 GitHub Issues에서 관리한다. 부모 이슈 #9 아래 하위 이슈이고, 순서는 차단(blocked-by) 관계로 걸려 있다. 작업 내용·완료 조건은 각 이슈가 기준이다.
 
 ## Overview
 
