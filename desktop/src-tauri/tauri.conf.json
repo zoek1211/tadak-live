@@ -22,7 +22,15 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": {
+        "default-src": "'self'",
+        "connect-src": "'self' ipc: http://ipc.localhost https://129-221-138-89.sslip.io http://localhost:8080",
+        "img-src": "'self' data:",
+        "media-src": "'self' https: http://localhost:8080",
+        "style-src": "'self'",
+        "font-src": "'self'",
+        "script-src": "'self'"
+      }
     }
   },
   "bundle": {
