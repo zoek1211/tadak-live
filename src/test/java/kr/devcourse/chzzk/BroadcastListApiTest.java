@@ -146,6 +146,27 @@ class BroadcastListApiTest {
     }
 
     @Test
+    void 업로드_영상의_재생_주소는_Range_요청에_206과_요청한_바이트만_준다() throws Exception {
+        MockHttpSession owner = MemberSessions.signUpAs(mvc, "타닥이");
+        byte[] video = new byte[20];
+        for (int i = 0; i < video.length; i++) {
+            video[i] = (byte) i;
+        }
+        mvc.perform(multipart("/broadcasts").session(owner).param("title", "탐색 올린 영상")
+                .file(new MockMultipartFile("videoFile", "seek.mp4", "video/mp4", video)));
+        String playbackUrl = (String) mine(getApi().body(), "recorded", "탐색 ").get(0).get("playbackUrl");
+
+        HttpResponse<byte[]> partial = CLIENT.send(HttpRequest.newBuilder(URI.create(playbackUrl))
+                        .header("Range", "bytes=5-14").GET().build(),
+                HttpResponse.BodyHandlers.ofByteArray());
+
+        assertThat(partial.statusCode()).isEqualTo(206);
+        assertThat(partial.headers().firstValue("Content-Range")).hasValue("bytes 5-14/20");
+        assertThat(partial.body()).containsExactly(5, 6, 7, 8, 9, 10, 11, 12, 13, 14);
+        assertThat(partial.headers().firstValue("Accept-Ranges")).hasValue("bytes");
+    }
+
+    @Test
     void 프록시_헤더가_있으면_재생_시청_주소가_https_공개_주소다() throws Exception {
         MockHttpSession owner = MemberSessions.signUpAs(mvc, "타닥이");
         registerUpload(owner, "프록시 올린 영상");
