@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('앱 받기')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: header}"></header>
+<main class="container download">
+    <section class="hero">
+        <h1>불가를 데스크톱에서도.</h1>
+        <p>타닥 라이브 앱은 지금 타는 방송과 다시 보기를 한눈에 보여 주고, 녹화방송은 앱 안에서 바로 재생합니다.
+            라이브 시청·로그인·댓글·장작 넣기는 앱 안 창에서 이 사이트 화면을 열어 씁니다.</p>
+    </section>
+
+    <section class="download-grid" aria-label="설치 파일">
+        <article class="download-card" data-os="windows">
+            <span class="recommend" hidden>이 컴퓨터용</span>
+            <h2>Windows</h2>
+            <p class="meta">Windows 10·11 (x64) · 설치 파일 .exe · 약 4MB</p>
+            <a class="button button-large" th:href="${downloads.windowsUrl()}" href="#">Windows용 받기</a>
+        </article>
+        <article class="download-card" data-os="mac">
+            <span class="recommend" hidden>이 컴퓨터용</span>
+            <h2>macOS</h2>
+            <p class="meta">macOS 11 이상 · Apple Silicon·Intel 겸용 · 디스크 이미지 .dmg · 약 9MB</p>
+            <a class="button button-large" th:href="${downloads.macosUrl()}" href="#">macOS용 받기</a>
+        </article>
+    </section>
+    <p class="meta">받기 버튼은 항상 최신 버전을 내려받습니다. <a th:href="${downloads.releasesPage()}" href="#">모든 버전·변경 내역</a></p>
+
+    <section class="install-steps" aria-labelledby="mac-steps">
+        <h2 id="mac-steps">macOS에서 처음 열기</h2>
+        <ol>
+            <li>받은 <code>.dmg</code> 를 열고 <strong>Tadak Live</strong> 를 <strong>응용 프로그램(Applications)</strong> 폴더로 끌어 넣습니다.</li>
+            <li>앱을 열면 "Apple은 'Tadak Live'에 악성 코드가 없음을 확인할 수 없습니다"(Apple could not verify…) 경고가 뜹니다. <strong>완료</strong>를 누릅니다. 휴지통으로 옮기지 마세요.</li>
+            <li><strong>시스템 설정 → 개인정보 보호 및 보안</strong>을 열고 아래쪽의 <strong>그래도 열기</strong>를 누릅니다.</li>
+            <li>다시 뜨는 창에서 <strong>그래도 열기</strong>를 누르고 Mac 암호(또는 Touch ID)로 확인합니다. 다음부터는 그냥 열립니다.</li>
+        </ol>
+        <p class="meta">macOS 15부터는 Control-클릭 → 열기로는 넘어가지 않습니다. <strong>그래도 열기</strong> 버튼이 보이지 않으면 터미널에서 아래 명령을 실행한 뒤 다시 여세요.</p>
+        <pre><code>xattr -dr com.apple.quarantine "/Applications/Tadak Live.app"</code></pre>
+    </section>
+
+    <section class="install-steps" aria-labelledby="windows-steps">
+        <h2 id="windows-steps">Windows에서 처음 실행</h2>
+        <ol>
+            <li>받은 <code>Tadak-Live-windows-x64-setup.exe</code> 를 실행합니다.</li>
+            <li>"Windows의 PC 보호" 창이 뜨면 <strong>추가 정보</strong>를 누른 뒤 <strong>실행</strong>을 누릅니다.</li>
+            <li>설치 마법사를 따라 설치합니다. 화면을 그리는 Microsoft Edge WebView2가 없으면 설치 중에 자동으로 받습니다.</li>
+        </ol>
+    </section>
+
+    <section class="install-steps" aria-labelledby="why-warning">
+        <h2 id="why-warning">왜 경고가 뜨나요?</h2>
+        <p>타닥 라이브는 개인 프로젝트라 유료 코드 서명 인증서를 쓰지 않았습니다. 그래서 운영체제가 만든 사람을 확인하지 못해 경고를 띄웁니다.
+            설치 파일은 공개된 소스 코드로 이 저장소의 GitHub Actions가 직접 빌드해 Release에 올린 것입니다.
+            <a th:href="${downloads.releasesPage()}" href="#">Release 목록</a>에서 버전마다 어떤 커밋으로 만들었는지 볼 수 있습니다.</p>
+    </section>
+
+    <section class="install-steps" aria-labelledby="phone">
+        <h2 id="phone">휴대폰에서는</h2>
+        <p>iPhone·Android 앱은 따로 없습니다. 휴대폰 브라우저(Safari, Chrome)로 이 사이트를 그대로 쓰면 됩니다.
+            라이브 송출(불 피우기)도 휴대폰 브라우저에서 합니다.</p>
+    </section>
+</main>
+<script th:inline="none">
+    // 이 컴퓨터의 OS 카드에 "이 컴퓨터용" 표시(브라우저에서만, 없어도 두 카드는 똑같이 쓸 수 있다). 서버는 User-Agent 를 보지 않는다.
+    (function () {
+        var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+        var agent = navigator.userAgent || "";
+        var os = /win/i.test(platform) ? "windows"
+            : /mac/i.test(platform) && !/iPhone|iPad|iPod/.test(agent) && navigator.maxTouchPoints < 2 ? "mac"
+            : null;
+        if (!os) return;
+        var card = document.querySelector('.download-card[data-os="' + os + '"]');
+        if (!card) return;
+        card.classList.add("recommended");
+        card.querySelector(".recommend").hidden = false;
+    })();
+</script>
+</body>
+</html>
