@@ -1,12 +1,15 @@
 :root {
-    --bg: #0e0f12;
-    --surface: #1a1c21;
-    --border: #2b2e35;
-    --text: #eceef2;
-    --muted: #9aa0ab;
-    --accent: #00d17a;
-    --accent-text: #04120b;
-    --danger: #ff6b6b;
+    /* 타닥 라이브: 밤·숯·불꽃 */
+    --bg: #16120f;
+    --surface: #221c17;
+    --border: #3a3029;
+    --text: #f5ede4;
+    --muted: #b8a99a;
+    --accent: #ff7a2f;
+    --accent-text: #1a0f08;
+    --link: #ffb37a;
+    --ember: #ffc56b;
+    --danger: #ff8a7a;
     color-scheme: dark;
 }
 
@@ -16,35 +19,42 @@ body {
     margin: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    font-family: "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
     line-height: 1.5;
 }
 
-a { color: var(--accent); }
+a { color: var(--link); }
+a:hover { color: #ffd2ae; }
 
 .site-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 12px 16px;
+    padding: 14px 24px;
     border-bottom: 1px solid var(--border);
-    background: var(--surface);
+    background: var(--bg);
 }
 
 .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     color: var(--text);
-    font-weight: 800;
-    font-size: 1.15rem;
+    font-weight: 900;
+    font-size: 1.35rem;
+    letter-spacing: -0.02em;
     text-decoration: none;
 }
+.brand:hover { color: var(--text); }
 .brand span { color: var(--accent); }
+.brand-mark { color: var(--accent); flex: none; }
 
 .button {
     display: inline-block;
-    padding: 8px 14px;
+    padding: 10px 18px;
     border: 0;
-    border-radius: 8px;
+    border-radius: 999px;
     background: var(--accent);
     color: var(--accent-text);
     font-weight: 700;
@@ -56,7 +66,7 @@ a { color: var(--accent); }
 .container { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
 .container.narrow { max-width: 560px; }
 
-h1 { font-size: 1.4rem; margin: 16px 0 8px; }
+h1 { font-size: 1.6rem; font-weight: 900; letter-spacing: -0.02em; margin: 16px 0 8px; }
 
 .meta { color: var(--muted); font-size: 0.875rem; }
 .empty { color: var(--muted); }
@@ -83,8 +93,9 @@ h1 { font-size: 1.4rem; margin: 16px 0 8px; }
     aspect-ratio: 16 / 9;
     display: grid;
     place-items: center;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #1f2b26, #15171c);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    background: var(--surface);
     color: var(--accent);
     font-size: 2rem;
 }
@@ -93,7 +104,7 @@ h1 { font-size: 1.4rem; margin: 16px 0 8px; }
 
 .player {
     background: #000;
-    border-radius: 10px;
+    border-radius: 20px;
     overflow: hidden;
 }
 .player video { display: block; width: 100%; max-height: 70vh; }
@@ -127,14 +138,14 @@ h1 { font-size: 1.4rem; margin: 16px 0 8px; }
     font-weight: 700;
     font-size: 0.8rem;
 }
-.badge-live { background: var(--danger); color: #fff; }
+.badge-live { background: var(--accent); color: var(--accent-text); }
 .badge-ended { background: var(--border); color: var(--muted); }
 .error { color: var(--danger); font-weight: 600; }
 
 .player { position: relative; }
 .player video { max-width: 100%; }
 .unmute-button { position: absolute; top: 10px; right: 10px; }
-.button-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); margin: 12px 0 0; }
+.button-secondary { background: transparent; color: var(--text); border: 1px solid #4a3d33; margin: 12px 0 0; }
 .error { overflow-wrap: anywhere; }
 img, video { max-width: 100%; }
 .container { overflow-wrap: anywhere; }
