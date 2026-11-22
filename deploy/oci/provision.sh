@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # OCI 자원 생성(있으면 재사용): SSH 키 -> VCN -> 인터넷 게이트웨이·라우트 -> 보안 목록 -> 서브넷 -> 인스턴스 -> 예약 공인 IP
-# -> deploy/vm/ 설정을 /opt/tadak 에 올리고 docker compose up -d.
+# -> 배포 사용자 deploy(CI 전용 키) -> deploy/vm/ 설정을 /opt/tadak 에 올리고 docker compose up -d.
 # 결과는 deploy/oci/.state.env 에 쓴다(커밋 금지). 다시 실행해도 새 자원이 생기지 않는다.
 # 필요 도구: oci, jq, ssh, ssh-keygen, scp. 인증: oci session authenticate --profile-name tadak
 # 선택 환경변수: TADAK_A1_RETRIES(기본 6), TADAK_A1_RETRY_SECONDS(기본 300),
 #   TADAK_ACME_STAGING=1(Let's Encrypt 스테이징 CA로 발급. 발급 경로 확인용, 브라우저는 신뢰하지 않음)
+#   TADAK_SSH_KEY(기본 ~/.ssh/tadak_oci, 관리용), TADAK_DEPLOY_KEY(기본 ~/.ssh/tadak_deploy, CI 배포용)
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -17,6 +18,7 @@ VM_CONFIG_DIR="$(cd "$DIR/../vm" && pwd)"
 ACME_PROD="https://acme-v02.api.letsencrypt.org/directory"
 ACME_STAGING="https://acme-staging-v02.api.letsencrypt.org/directory"
 SSH_KEY="${TADAK_SSH_KEY:-$HOME/.ssh/tadak_oci}"
+DEPLOY_KEY="${TADAK_DEPLOY_KEY:-$HOME/.ssh/tadak_deploy}"
 KNOWN_HOSTS="$HOME/.ssh/tadak_oci_known_hosts"
 A1_RETRIES="${TADAK_A1_RETRIES:-6}"
 A1_RETRY_SECONDS="${TADAK_A1_RETRY_SECONDS:-300}"
@@ -40,18 +42,34 @@ EGRESS='[{"protocol":"all","destination":"0.0.0.0/0"}]'
 require_tools oci jq ssh ssh-keygen scp
 oci_init
 
+SSH_OPTS=(-o UserKnownHostsFile="$KNOWN_HOSTS" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=5 -o BatchMode=yes)
+
+# 관리용(ubuntu, sudo 가능): 사용자·방화벽 같은 VM 설정
 ssh_vm() {
-  ssh -i "$SSH_KEY" -o UserKnownHostsFile="$KNOWN_HOSTS" -o StrictHostKeyChecking=accept-new \
-    -o ConnectTimeout=5 -o BatchMode=yes "ubuntu@$PUBLIC_IP" "$@"
+  ssh -i "$SSH_KEY" "${SSH_OPTS[@]}" "ubuntu@$PUBLIC_IP" "$@"
 }
 
-echo "==> SSH 키 $SSH_KEY 확인"
-if [[ -f "$SSH_KEY" ]]; then
-  echo "    이미 있어 재사용합니다."
-else
-  ssh-keygen -t ed25519 -N "" -C "tadak-oci" -f "$SSH_KEY" >/dev/null
-  echo "    만들었습니다(비밀 키는 이 컴퓨터에만 있음)."
-fi
+# 배포용(deploy, docker 그룹·sudo 없음): /opt/tadak 파일과 docker compose. CI도 같은 사용자로 들어온다
+ssh_deploy() {
+  ssh -i "$DEPLOY_KEY" "${SSH_OPTS[@]}" "deploy@$PUBLIC_IP" "$@"
+}
+scp_deploy() {
+  scp -q -i "$DEPLOY_KEY" "${SSH_OPTS[@]}" "$@"
+}
+
+ensure_key() {
+  local key="$1" comment="$2"
+  echo "==> SSH 키 $key 확인"
+  if [[ -f "$key" ]]; then
+    echo "    이미 있어 재사용합니다."
+  else
+    ssh-keygen -t ed25519 -N "" -C "$comment" -f "$key" >/dev/null
+    echo "    만들었습니다(비밀 키는 이 컴퓨터에만 있음)."
+  fi
+}
+ensure_key "$SSH_KEY" "tadak-oci"
+# CI 배포 전용 키. 비밀 키는 사용자가 GitHub Secret VM_SSH_KEY 로 직접 넣는다
+ensure_key "$DEPLOY_KEY" "tadak-deploy"
 
 echo "==> VCN '$VCN_NAME' 확인"
 VCN_ID="$("${OCI[@]}" network vcn list -c "$TENANCY" --display-name "$VCN_NAME" --lifecycle-state AVAILABLE --all \
@@ -234,19 +252,32 @@ echo "==> cloud-init 완료 대기(Docker 설치)"
 ssh_vm 'cloud-init status --wait >/dev/null; cloud-init status'
 ssh_vm 'docker compose version'
 
+echo "==> 배포 사용자 deploy 확인(docker 그룹, 키 $DEPLOY_KEY.pub, /opt/tadak 소유)"
+# authorized_keys 는 매번 이 공개 키 하나로 덮는다(키를 바꾸면 재실행으로 교체됨)
+ssh_vm "sudo DEPLOY_PUB='$(cat "$DEPLOY_KEY.pub")' bash -s" <<'EOF'
+set -euo pipefail
+id deploy >/dev/null 2>&1 || useradd --create-home --shell /bin/bash deploy
+usermod -aG docker deploy
+install -d -o deploy -g deploy -m 700 /home/deploy/.ssh
+printf '%s\n' "$DEPLOY_PUB" > /home/deploy/.ssh/authorized_keys
+chown deploy:deploy /home/deploy/.ssh/authorized_keys
+chmod 600 /home/deploy/.ssh/authorized_keys
+install -d -o deploy -g deploy -m 755 /opt/tadak /opt/tadak/caddy
+chown -R deploy:deploy /opt/tadak
+EOF
+ssh_deploy 'id -nG' | grep -qw docker || { echo "    deploy 사용자가 docker 그룹에 없습니다." >&2; exit 1; }
+echo "    준비됐습니다."
+
 ACME_CA="$ACME_PROD"
 [[ "${TADAK_ACME_STAGING:-}" == "1" ]] && ACME_CA="$ACME_STAGING"
 echo "==> 설정 배포: deploy/vm -> /opt/tadak (인증서 발급처: $ACME_CA)"
-ssh_vm 'mkdir -p /opt/tadak/caddy'
-scp -q -i "$SSH_KEY" -o UserKnownHostsFile="$KNOWN_HOSTS" -o BatchMode=yes \
-  "$VM_CONFIG_DIR/compose.yaml" "ubuntu@$PUBLIC_IP:/opt/tadak/compose.yaml"
-scp -q -i "$SSH_KEY" -o UserKnownHostsFile="$KNOWN_HOSTS" -o BatchMode=yes \
-  "$VM_CONFIG_DIR/Caddyfile" "ubuntu@$PUBLIC_IP:/opt/tadak/caddy/Caddyfile"
-# .env 는 VM에서만 만든다(권한 600). backend-deploy 가 비밀 값을 여기에 더한다.
-ssh_vm "umask 077; touch /opt/tadak/.env; grep -vE '^(TADAK_HOST|TADAK_ACME_CA)=' /opt/tadak/.env > /opt/tadak/.env.new || true; \
+scp_deploy "$VM_CONFIG_DIR/compose.yaml" "deploy@$PUBLIC_IP:/opt/tadak/compose.yaml"
+scp_deploy "$VM_CONFIG_DIR/Caddyfile" "deploy@$PUBLIC_IP:/opt/tadak/caddy/Caddyfile"
+# .env 는 VM에서만 만든다(권한 600). 앱 비밀 값은 배포(deploy.sh)가 같은 파일에 더한다.
+ssh_deploy "umask 077; touch /opt/tadak/.env; grep -vE '^(TADAK_HOST|TADAK_ACME_CA)=' /opt/tadak/.env > /opt/tadak/.env.new || true; \
   printf 'TADAK_HOST=%s\nTADAK_ACME_CA=%s\n' '$TADAK_HOST' '$ACME_CA' >> /opt/tadak/.env.new; mv /opt/tadak/.env.new /opt/tadak/.env"
 # up -d 는 .env 가 바뀌면 컨테이너를 다시 만들고, reload 는 Caddyfile 변경을 반영한다
-ssh_vm 'cd /opt/tadak && docker compose up -d --remove-orphans --quiet-pull && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile'
+ssh_deploy 'cd /opt/tadak && docker compose up -d --remove-orphans --quiet-pull && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile'
 
 echo
 echo "완료: $SHAPE, 공인 IP $PUBLIC_IP, 주소 https://$TADAK_HOST"

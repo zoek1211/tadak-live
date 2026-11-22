@@ -28,6 +28,11 @@ oci_init() {
     exit 1
   fi
   OCI=(oci --profile "$PROFILE" --auth security_token)
+  # 세션 토큰은 1시간짜리라 실행 도중 끊기지 않게 시작할 때 연장해 둔다(만료된 뒤에는 연장이 안 되고 다시 로그인해야 함)
+  if ! oci session refresh --profile "$PROFILE" >/dev/null 2>&1; then
+    session_hint
+    exit 1
+  fi
   if ! REGIONS_JSON="$("${OCI[@]}" iam region-subscription list 2>/dev/null)"; then
     session_hint
     exit 1
