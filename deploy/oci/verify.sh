@@ -7,7 +7,8 @@
 #  4) 외부에서 8080 연결 실패
 #  --app(앱 배포 뒤): 5) / 가 https 의 /broadcasts 로 가고 200, "타닥 라이브" 화면  6) /actuator/health UP  7) /actuator/env 404
 #                     8) 로그인 세션 쿠키(JSESSIONID)에 Secure
-# 필요 도구: curl, openssl. 주소는 deploy/oci/.state.env 의 TADAK_HOST, PUBLIC_IP.
+#                     9) /api/broadcasts 200, live·recorded 배열, 서버 주소가 모두 https://<host>/, 다른 출처 CORS 허용
+# 필요 도구: curl, openssl(--app 은 jq 도). 주소는 deploy/oci/.state.env 의 TADAK_HOST, PUBLIC_IP.
 # 선택 환경변수: TADAK_ALLOW_STAGING=1(스테이징 인증서 허용, 1번은 -k)
 set -uo pipefail
 
@@ -17,7 +18,9 @@ ALLOW_STAGING="${TADAK_ALLOW_STAGING:-}"
 APP=0
 [[ "${1:-}" == "--app" ]] && APP=1
 
-for tool in curl openssl; do
+tools=(curl openssl)
+[[ $APP -eq 1 ]] && tools+=(jq)
+for tool in "${tools[@]}"; do
   command -v "$tool" >/dev/null || { echo "필요한 도구가 없습니다: $tool" >&2; exit 1; }
 done
 [[ -f "$STATE_FILE" ]] || { echo "$STATE_FILE 이 없습니다. 먼저 deploy/oci/provision.sh 를 실행하세요." >&2; exit 1; }
@@ -91,6 +94,24 @@ if [[ $APP -eq 1 ]]; then
   else
     fail "세션 쿠키에 Secure가 없습니다: ${cookie:-JSESSIONID 없음}"
   fi
+  # 9) 목록 API(데스크톱 앱용): 계약 모양, 이 서버가 만든 주소는 https 공개 주소, 다른 출처 허용
+  api_headers="$(mktemp)"
+  api="$(curl -sS --max-time 10 -D "$api_headers" -H 'Origin: tauri://localhost' "https://$TADAK_HOST/api/broadcasts" 2>&1)"
+  if ! jq -e '(.live | type == "array") and (.recorded | type == "array")' >/dev/null 2>&1 <<<"$api"; then
+    fail "/api/broadcasts 응답이 계약과 다릅니다: $(head -c 120 <<<"$api")"
+  else
+    counts="$(jq -r '"라이브 \(.live | length), 녹화 \(.recorded | length)"' <<<"$api")"
+    bad="$(jq -r --arg base "https://$TADAK_HOST/" \
+      '[.live[].watchUrl, .recorded[].watchUrl, (.recorded[] | select(.videoSource == "UPLOADED") | .playbackUrl)]
+       | map(select(startswith($base) | not)) | .[]' <<<"$api")"
+    if [[ -z "$bad" ]]; then pass "/api/broadcasts 계약·https 주소($counts)"; else fail "https 공개 주소가 아닌 주소: $bad"; fi
+  fi
+  if tr -d '\r' <"$api_headers" | grep -qi '^access-control-allow-origin: \*$'; then
+    pass "/api/broadcasts CORS 허용(*)"
+  else
+    fail "/api/broadcasts 에 CORS 허용 헤더가 없습니다"
+  fi
+  rm -f "$api_headers"
 fi
 
 if [[ $FAILED -eq 0 ]]; then
