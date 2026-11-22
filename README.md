@@ -18,7 +18,19 @@
 | 상태 확인 | <https://129-221-138-89.sslip.io/actuator/health> |
 | 데스크톱 설치 파일 | [GitHub Releases(최신)](https://github.com/zoek1211/tadak-live/releases/latest) |
 
-> **임시 배포입니다.** 쓰려는 도메인(`zoek.im`)의 등록을 기다리는 중이라, 지금은 VM의 공인 IP를 이름으로 바꿔 주는 [sslip.io](https://sslip.io) 주소(`<IP를 대시로>.sslip.io`)에 Let's Encrypt 인증서를 붙여 HTTPS로 공개했습니다. 도메인 등록이 끝나면 OCI DNS로 옮기고 주소를 바꿉니다. 도메인을 아직 사지 않아 도메인 비용은 없습니다.
+> **임시 배포입니다.** 도메인 `zoek.im` 을 구매했지만 등록 승인을 기다리는 중이라, 지금은 VM의 공인 IP를 이름으로 바꿔 주는 [sslip.io](https://sslip.io) 주소(`<IP를 대시로>.sslip.io`)에 Let's Encrypt 인증서를 붙여 HTTPS로 공개했습니다. 등록이 승인되면 OCI DNS 영역을 만들고 등록 기관에서 네임서버를 OCI로 바꾼 뒤, 새 주소로 인증서를 다시 받아 옮깁니다.
+
+**도메인**
+
+| 항목 | 내용 |
+| --- | --- |
+| 도메인 | `zoek.im` |
+| 상태 | 구매 완료, 등록 승인 대기 중(아직 DNS에 연결하지 않음) |
+| 최초 등록 비용 | 10,768원 |
+| 갱신 비용 | 18,854원(자동 갱신) |
+| 연결 계획 | OCI DNS 영역 → 네임서버를 OCI로 변경 → Caddy가 새 주소로 Let's Encrypt 인증서 발급 |
+
+도메인 외에 드는 비용은 없습니다(서버는 OCI Always Free 한도 안). 결제 수단 등 결제 정보는 저장소에 두지 않습니다.
 
 ## 목차
 
