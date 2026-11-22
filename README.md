@@ -167,7 +167,7 @@ Windows·macOS용 앱입니다. 공개 서버의 [방송 목록 API](#방송-목
 
 코드 서명을 하지 않은 앱이라(유료 인증서가 필요해 쓰지 않음) 처음 열 때 경고가 뜹니다.
 
-- **macOS:** "확인되지 않은 개발자" 경고가 뜨면 Finder에서 앱을 Control-클릭 → **열기**를 고르거나, **시스템 설정 → 개인정보 보호 및 보안**에서 **그래도 열기**를 누르세요.
+- **macOS:** 처음 열면 "Apple은 … 악성 코드가 없음을 확인할 수 없습니다"(Apple could not verify …) 경고가 뜹니다. **완료**를 누른 뒤 **시스템 설정 → 개인정보 보호 및 보안**에서 맨 아래 **그래도 열기**를 누르고, 다시 뜨는 창에서 **그래도 열기**와 암호(또는 Touch ID)로 확인하세요. 한 번만 하면 됩니다. macOS 15부터는 Control-클릭 → 열기로는 넘어가지 않습니다. 버튼이 안 보이면 터미널에서 `xattr -dr com.apple.quarantine "/Applications/Tadak Live.app"` 를 실행한 뒤 다시 여세요.
 - **Windows:** SmartScreen 창에서 **추가 정보 → 실행**을 누르세요.
 
 **배포:** `desktop/` 이 바뀐 커밋이 `main` 에 들어가면 [.github/workflows/desktop.yml](.github/workflows/desktop.yml)이 Windows·macOS 설치 파일을 만들어 GitHub Release `desktop-v0.1.<실행 번호>` 에 올리고 최신(latest)으로 표시합니다. 위 링크는 항상 최신 파일을 가리킵니다. PR에서는 테스트와 빌드만 돌고 릴리스는 하지 않습니다. 앱이 붙는 서버 주소는 빌드할 때 저장소 변수 `TADAK_HOST` 로 정합니다.
