@@ -1,4 +1,5 @@
 /** 앱 진입점: 목록을 불러와 그리고, 30초마다·창이 다시 앞으로 올 때 새로 불러온다. */
+import "./fonts";
 import { ApiError, fetchBroadcasts } from "./api";
 import { API_BASE } from "./config";
 import type { RecordedItem } from "./api";
