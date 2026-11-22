@@ -159,7 +159,7 @@ class DonationWebTest {
     @Test
     void 비로그인_방문자는_후원_영역에서_로그인_링크를_본다() throws Exception {
         String id = recordedBy(MemberSessions.signUpAs(mvc, "방송주인"));
-        assertThat(page("/broadcasts/" + id)).contains("로그인 후 후원");
+        assertThat(page("/broadcasts/" + id)).contains("장작을 넣을 수 있습니다");
     }
 
     @Test
@@ -189,7 +189,7 @@ class DonationWebTest {
         String orderId = order(donor, "LIVE", id, 1000, "");
         mvc.perform(get("/donations/success").session(donor).param("paymentKey", "pk_2").param("orderId", orderId).param("amount", "1000"))
                 .andExpect(status().isOk());
-        assertThat(page("/live/" + id)).contains("후원 합계").contains("1,000");
+        assertThat(page("/live/" + id)).contains("쌓인 장작").contains("1,000");
     }
 
     @Test

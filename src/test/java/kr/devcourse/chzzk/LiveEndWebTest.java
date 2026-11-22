@@ -70,7 +70,7 @@ class LiveEndWebTest {
 
         String html = page("/live/" + live.id());
         assertThat(LivePages.showsEnded(html)).isTrue();
-        assertThat(html).contains("방송이 종료되었습니다", "곧 끝날 라이브", "종료");
+        assertThat(html).contains("불이 꺼졌어요", "곧 끝날 라이브", "불 꺼짐");
         assertThat(html).doesNotContain("<video");
         assertThat(html.split("<time", -1)).hasSize(3); // 시작 시각과 종료 시각
     }
@@ -157,6 +157,6 @@ class LiveEndWebTest {
         String html = mvc.perform(get("/live/new").session(TestLogin.member(mvc)))
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(html).contains("방송 종료", "/end", "closeBroadcast()");
+        assertThat(html).contains("불 끄기", "/end", "closeBroadcast()");
     }
 }

@@ -1,32 +1,40 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('송출 화면')}"></head>
+<head th:replace="~{fragments/layout :: head('불 피우기')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: header}"></header>
-<main class="container narrow">
-    <h1>송출 화면</h1>
+<main class="container narrow go-live">
+    <h1 class="visually-hidden">불 피우기</h1>
 
     <p class="error" role="alert" id="message" hidden></p>
 
-    <div class="player">
+    <div class="stage stage-portrait">
         <video id="preview" autoplay muted playsinline></video>
+        <span class="stage-note stage-placeholder" aria-hidden="true">카메라 미리보기</span>
+        <span class="badge badge-live stage-badge" id="live-badge" hidden>
+            <svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2c1 3.2-1.6 4.8-1.6 7.6 0 1.4 1 2.4 2.2 2.4 1.4 0 2.2-1.1 2-2.9 2.3 1.7 3.4 4.1 3.4 6.4A6 6 0 0 1 12 21.5a6 6 0 0 1-6-6c0-4.6 4.6-7.2 6-13.5Z" fill="currentColor"/></svg>
+            타는 중
+        </span>
+        <button type="button" class="icon-button stage-corner" id="switch-camera-button" aria-label="카메라 전환" hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9.5 13a2.5 2.5 0 0 1 4.3-1.7M14.5 13a2.5 2.5 0 0 1-4.3 1.7"/></svg>
+        </button>
     </div>
-
-    <button type="button" class="button button-secondary" id="switch-camera-button" hidden>카메라 전환</button>
 
     <form id="start-form" class="form">
         <label>
-            제목
+            오늘의 불 이름
             <input type="text" name="title" maxlength="200" required>
         </label>
-        <button type="submit" class="button" id="start-button">방송 시작</button>
+        <button type="submit" class="button button-large" id="start-button">불 피우기</button>
+        <p class="meta center">영상은 휴대폰에서 시청자에게 바로 갑니다.</p>
     </form>
 
-    <p id="started" class="meta" hidden>
-        방송 중입니다. <a id="watch-link" href="#">시청 화면 열기</a>
-    </p>
-    <button type="button" class="button" id="end-button" hidden>방송 종료</button>
-    <p id="ended" class="meta" hidden>방송이 종료되었습니다. 더 이상 영상을 보내지 않습니다.</p>
+    <div id="started" class="go-live-status" hidden>
+        <p class="go-live-title" id="started-title"></p>
+        <a id="watch-link" href="#">시청 화면 열기</a>
+    </div>
+    <button type="button" class="button button-secondary button-large" id="end-button" hidden>불 끄기</button>
+    <p id="ended" class="meta" hidden>불이 꺼졌어요. 불씨만 남았어요. 더 이상 영상을 보내지 않습니다.</p>
 </main>
 <script th:inline="javascript">
 window.ICE_SERVERS = JSON.parse(/*[[${iceServersJson}]]*/ '[]');
@@ -272,9 +280,12 @@ window.ICE_SERVERS = JSON.parse(/*[[${iceServersJson}]]*/ '[]');
                 endButton.hidden = false;
                 switchButton.hidden = false;
                 document.getElementById('watch-link').href = '/live/' + body.id;
+                document.getElementById('started-title').textContent = form.title.value.trim();
                 document.getElementById('started').hidden = false;
+                document.getElementById('live-badge').hidden = false;
                 document.getElementById('start-button').disabled = true;
                 form.title.readOnly = true;
+                form.hidden = true;
             });
         });
     });
@@ -289,6 +300,7 @@ window.ICE_SERVERS = JSON.parse(/*[[${iceServersJson}]]*/ '[]');
         endButton.hidden = true;
         switchButton.hidden = true;
         document.getElementById('started').hidden = true;
+        document.getElementById('live-badge').hidden = true;
         document.getElementById('ended').hidden = false;
     }
 

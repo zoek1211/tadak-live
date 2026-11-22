@@ -52,7 +52,7 @@ class DonationDisabledWebTest {
                 .andReturn().getResponse().getRedirectedUrl();
         String html = mvc.perform(get(url).session(owner)).andReturn().getResponse().getContentAsString();
 
-        assertThat(html).contains("결제 키가 설정되지 않아 후원을 받을 수 없습니다", "후원 합계");
+        assertThat(html).contains("결제 키가 설정되지 않아 후원을 받을 수 없습니다", "쌓인 장작");
         assertThat(html).doesNotContain("donation-form", "donation-submit", "test_sk_never_shown");
     }
 }

@@ -118,11 +118,11 @@ class CommentWebTest {
     void 비로그인_화면에는_작성_폼_대신_로그인_안내가_보이고_회원에게는_작성_폼이_보인다() throws Exception {
         String path = "/broadcasts/" + recordedBroadcast("폼 확인");
 
-        assertThat(page(path)).contains("로그인하면 댓글을 쓸 수 있습니다").doesNotContain("name=\"body\"");
+        assertThat(page(path)).contains("로그인하면 이야기를 보탤 수 있습니다").doesNotContain("name=\"body\"");
 
         String html = mvc.perform(get(path).session(signUp("폼러")))
                 .andReturn().getResponse().getContentAsString();
-        assertThat(html).contains("name=\"body\"").doesNotContain("로그인하면 댓글을 쓸 수 있습니다");
+        assertThat(html).contains("name=\"body\"").doesNotContain("로그인하면 이야기를 보탤 수 있습니다");
     }
 
     @Test
