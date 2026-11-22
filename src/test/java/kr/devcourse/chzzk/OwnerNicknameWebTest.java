@@ -53,7 +53,7 @@ class OwnerNicknameWebTest {
 
         mvc.perform(get("/live/" + id))
                 .andExpect(status().isOk())
-                .andExpect(content().string(containsString("소유자 <span>라이브주인공</span>")));
+                .andExpect(content().string(containsString("<span>라이브주인공</span>")));
     }
 
     @Test

@@ -3,13 +3,14 @@
 <head th:replace="~{fragments/layout :: head(${broadcast.title})}"></head>
 <body>
 <header th:replace="~{fragments/layout :: header}"></header>
-<main class="container">
+<main class="container watch">
+    <section class="watch-main" aria-label="다시 보기">
     <div class="player">
         <video controls preload="metadata" playsinline th:src="${broadcast.playbackUrl()}"></video>
     </div>
     <h1 th:text="${broadcast.title}">제목</h1>
     <p class="meta">
-        <span th:text="${broadcast.videoSource.name() == 'UPLOADED'} ? '업로드 영상' : '외부 영상'">업로드 영상</span>
+        <span th:text="${broadcast.videoSource.name() == 'UPLOADED'} ? '올린 영상' : '외부 영상'">올린 영상</span>
         · 소유자 <span th:text="${broadcast.owner != null} ? ${broadcast.owner.nickname} : '소유자 없음'">닉네임</span>
         ·
         <time th:text="${#temporals.format(broadcast.registeredAt, 'yyyy-MM-dd HH:mm', 'Asia/Seoul')}">2026-01-01</time>
@@ -17,13 +18,14 @@
     <div class="actions" th:if="${ownedByMe}">
         <a class="button button-secondary" th:href="@{/broadcasts/{id}/edit(id=${broadcast.id})}">수정</a>
         <form method="post" th:action="@{/broadcasts/{id}/delete(id=${broadcast.id})}" class="inline-form"
-              onsubmit="return confirm('이 녹화방송을 삭제할까요? 되돌릴 수 없습니다.')">
+              onsubmit="return confirm('이 다시 보기를 삭제할까요? 되돌릴 수 없습니다.')">
             <button type="submit" class="button button-secondary">삭제</button>
         </form>
     </div>
     <section th:replace="~{fragments/donations :: donations(${donationRecordedKind}, ${broadcast.id})}"></section>
-    <section th:replace="~{fragments/comments :: comments(${recordedKind}, ${broadcast.id})}"></section>
     <p><a th:href="@{/broadcasts}">← 목록으로</a></p>
+    </section>
+    <section th:replace="~{fragments/comments :: comments(${recordedKind}, ${broadcast.id})}"></section>
 </main>
 </body>
 </html>

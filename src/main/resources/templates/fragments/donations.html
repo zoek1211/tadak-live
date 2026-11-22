@@ -8,32 +8,36 @@
                   donationEnabled=${@donationAvailability.enabled},
                   canDonate=${donationEnabled and @donationService.canDonate(kind, broadcastId, currentMember?.memberId())}"
          th:attr="data-kind=${kind.name()},data-broadcast-id=${broadcastId},data-orders-url=@{/donations}">
-    <h2>후원</h2>
-    <p class="donation-total">후원 합계 <strong th:text="${#numbers.formatInteger(donationTotal, 1, 'COMMA')} + '원'">0원</strong></p>
+    <div class="panel-head">
+        <h2>장작 넣기</h2>
+        <p class="donation-total">지금까지 쌓인 장작 <strong th:text="${#numbers.formatInteger(donationTotal, 1, 'COMMA')} + '원'">0원</strong></p>
+    </div>
+    <p class="meta" th:if="${donationEnabled}">장작을 넣으면 불이 더 오래 탑니다. 토스 테스트 결제로 진행돼요.</p>
 
     <p class="meta donation-disabled" th:unless="${donationEnabled}">결제 키가 설정되지 않아 후원을 받을 수 없습니다.</p>
 
     <div th:if="${canDonate}" class="donation-form">
-        <div class="donation-amounts">
-            <button type="button" class="button button-secondary" data-amount="1000">1,000원</button>
-            <button type="button" class="button button-secondary" data-amount="5000">5,000원</button>
-            <button type="button" class="button button-secondary" data-amount="10000">10,000원</button>
+        <div class="donation-amounts" role="group" aria-label="장작 금액">
+            <button type="button" class="amount-button" data-amount="1000" aria-pressed="false">1,000원</button>
+            <button type="button" class="amount-button" data-amount="5000" aria-pressed="true">5,000원</button>
+            <button type="button" class="amount-button" data-amount="10000" aria-pressed="false">10,000원</button>
+            <button type="button" class="amount-button" data-amount="30000" aria-pressed="false">30,000원</button>
         </div>
         <label>
-            금액 (1,000원 단위, 1,000~1,000,000원)
+            직접 입력 (1,000원 단위, 1,000~1,000,000원)
             <input type="number" class="donation-amount" min="1000" max="1000000" step="1000" value="5000">
         </label>
         <label>
-            메시지 (선택, 100자 이하)
+            한마디 (선택, 100자 이하)
             <input type="text" class="donation-message" maxlength="100">
         </label>
-        <button type="button" class="button donation-submit">후원하기</button>
+        <button type="button" class="button button-ember donation-submit">5,000원 장작 넣기</button>
         <p class="meta donation-error" role="alert" hidden></p>
     </div>
     <p class="meta" th:if="${donationEnabled and currentMember == null}">
-        <a th:href="@{/login}">로그인 후 후원</a>할 수 있습니다.
+        <a th:href="@{/login}">로그인하면</a> 장작을 넣을 수 있습니다.
     </p>
-    <p class="meta" th:if="${donationEnabled and currentMember != null and !canDonate}">이 방송에는 후원할 수 없습니다.</p>
+    <p class="meta" th:if="${donationEnabled and currentMember != null and !canDonate}">이 방송에는 장작을 넣을 수 없습니다.</p>
 
     <ul class="donation-list">
         <li th:each="d : ${donationList}" class="donation">
@@ -43,7 +47,7 @@
             <p class="donation-message-text" th:if="${d.message != null}" th:text="${d.message}">메시지</p>
         </li>
     </ul>
-    <p class="empty" th:if="${#lists.isEmpty(donationList)}">아직 후원이 없습니다.</p>
+    <p class="empty" th:if="${#lists.isEmpty(donationList)}">아직 넣은 장작이 없습니다.</p>
 
     <th:block th:if="${canDonate}">
         <script src="https://js.tosspayments.com/v2/standard"></script>
@@ -61,9 +65,22 @@
                     error.hidden = false;
                     submit.disabled = false;
                 }
-                root.querySelectorAll('[data-amount]').forEach(function (button) {
-                    button.addEventListener('click', function () { amountInput.value = button.dataset.amount; });
+                var amountButtons = root.querySelectorAll('[data-amount]');
+                // 고른 금액을 버튼 표시와 넣기 버튼 문구에 맞춘다(목록에 없는 금액이면 어느 버튼도 눌리지 않는다).
+                function syncAmount() {
+                    var value = Number(amountInput.value);
+                    amountButtons.forEach(function (button) {
+                        button.setAttribute('aria-pressed', String(Number(button.dataset.amount) === value));
+                    });
+                    submit.textContent = value > 0 ? value.toLocaleString('ko-KR') + '원 장작 넣기' : '장작 넣기';
+                }
+                amountButtons.forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        amountInput.value = button.dataset.amount;
+                        syncAmount();
+                    });
                 });
+                amountInput.addEventListener('input', syncAmount);
                 submit.addEventListener('click', function () {
                     error.hidden = true;
                     submit.disabled = true;

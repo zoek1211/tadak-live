@@ -79,8 +79,8 @@ class LiveBroadcastWebTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        assertThat(html).contains("라이브 방송", "녹화방송", "목록의 라이브", "목록의 녹화방송",
-                "href=\"/live/" + liveId + "\"", "href=\"" + recordedUrl + "\"", "방송 중");
+        assertThat(html).contains("지금 타는 중", "다시 보기", "목록의 라이브", "목록의 녹화방송",
+                "href=\"/live/" + liveId + "\"", "href=\"" + recordedUrl + "\"", "타는 중", "불가에 0명");
         assertThat(html.indexOf("목록의 라이브")).isLessThan(html.indexOf("목록의 녹화방송"));
     }
 
@@ -91,7 +91,7 @@ class LiveBroadcastWebTest {
         mvc.perform(get("/live/" + liveId))
                 .andExpect(status().isOk())
                 .andExpect(content().string(containsString("시청할 라이브")))
-                .andExpect(content().string(containsString("방송 중")));
+                .andExpect(content().string(containsString("타는 중")));
     }
 
     @Test
@@ -106,7 +106,7 @@ class LiveBroadcastWebTest {
                 .andExpect(content().string(containsString("name=\"title\"")))
                 .andExpect(content().string(containsString("<video")))
                 .andExpect(content().string(containsString("getUserMedia")))
-                .andExpect(content().string(containsString("방송 시작")));
+                .andExpect(content().string(containsString("id=\"start-button\">불 피우기")));
     }
 
     @Test
@@ -125,7 +125,7 @@ class LiveBroadcastWebTest {
 
         mvc.perform(get("/live/" + liveId))
                 .andExpect(content().string(containsString("id=\"unmute-button\"")))
-                .andExpect(content().string(containsString("음소거 해제")));
+                .andExpect(content().string(containsString("소리 켜기")));
     }
 
     @Test

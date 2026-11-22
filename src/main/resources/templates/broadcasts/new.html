@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('녹화방송 등록')}"></head>
+<head th:replace="~{fragments/layout :: head('다시 보기 올리기')}"></head>
 <body>
 <header th:replace="~{fragments/layout :: header}"></header>
 <main class="container narrow">
-    <h1>녹화방송 등록</h1>
+    <h1>다시 보기 올리기</h1>
 
     <p class="error" role="alert" th:if="${error}" th:text="${error}">오류</p>
 
@@ -27,7 +27,7 @@
             </label>
         </fieldset>
 
-        <button type="submit" class="button">등록</button>
+        <button type="submit" class="button">올리기</button>
     </form>
 </main>
 </body>
