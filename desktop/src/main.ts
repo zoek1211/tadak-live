@@ -3,6 +3,7 @@ import "./fonts";
 import { ApiError, fetchBroadcasts } from "./api";
 import { API_BASE } from "./config";
 import type { RecordedItem } from "./api";
+import { renderHeaderActions } from "./header";
 import { renderList, type ListHandlers, type ListState } from "./list";
 import { renderPlayer } from "./player";
 import { openInApp, openInBrowser } from "./web";
@@ -62,6 +63,9 @@ async function load(): Promise<void> {
 
 function start(): void {
   document.title = APP_TITLE;
+  renderHeaderActions(document.getElementById("header-actions")!, API_BASE, {
+    openLogin: (url) => void openInApp(url, "로그인"),
+  });
   render();
   void load();
   setInterval(() => void load(), REFRESH_MS);

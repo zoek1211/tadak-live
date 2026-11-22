@@ -134,6 +134,7 @@ export async function fetchBroadcasts(base: string, fetchImpl: typeof fetch = fe
 1. **웹 화면은 앱 안 새 창**(`WebviewWindow`), 창마다 "브라우저로 열기".
 2. **릴리스는 `desktop/**` 이 바뀐 `main` 푸시마다** 자동(`desktop-v0.1.<실행 번호>`, latest).
 3. **macOS는 유니버설 `.dmg` 하나.**
+4. **앱 상단 "로그인" 버튼**(2026-11-22 #33 확인 중 사용자 요청, 방식 A): 웹 로그인 화면(`/login`)을 앱 안 창으로 연다. 앱의 웹 창들은 로그인 쿠키를 함께 써서 이후 시청·댓글·장작 넣기 창도 로그인된 채로 열린다. 앱 자체 로그인 폼·로그인 API·닉네임 표시(방식 B)는 하지 않는다 — 백엔드 변경이 필요하고 의도 문서 "하지 않는 것"과 부딪힌다. 앱 목록 화면은 로그인 여부를 모른다.
 
 ## Open Questions
 
