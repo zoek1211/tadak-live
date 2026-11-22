@@ -1,6 +1,6 @@
-# VM(/opt/tadak)에서 돌리는 Compose. provision.sh 가 올리고 docker compose up -d 한다.
-# 인터넷에 여는 것은 Caddy의 80/443(TCP)뿐이다. 앱 컨테이너는 backend-deploy 에서 이 파일에 추가하고 포트를 열지 않는다.
-# .env(provision.sh 가 씀, 권한 600): TADAK_HOST, TADAK_ACME_CA
+# VM(/opt/tadak)에서 돌리는 Compose. provision.sh·deploy.sh 가 올리고 deploy 사용자가 실행한다.
+# 인터넷에 여는 것은 Caddy의 80/443(TCP)뿐이다. 앱은 포트를 열지 않고 Compose 내부 네트워크에서 Caddy가 app:8080 으로 보낸다.
+# .env(권한 600): TADAK_HOST·TADAK_ACME_CA(provision.sh), TADAK_IMAGE·앱 설정·비밀 값(deploy.sh)
 services:
   caddy:
     image: caddy:2
@@ -8,13 +8,27 @@ services:
     ports:
       - "80:80"
       - "443:443"
-    env_file: .env
+    # Caddy에는 주소·인증서 발급처만 넘긴다(앱 비밀 값이 든 .env 전체를 넘기지 않음)
+    environment:
+      TADAK_HOST: ${TADAK_HOST:?TADAK_HOST 가 .env 에 없습니다}
+      TADAK_ACME_CA: ${TADAK_ACME_CA:-https://acme-v02.api.letsencrypt.org/directory}
     volumes:
       # 파일이 아니라 디렉터리를 마운트해야 Caddyfile을 바꿔 올렸을 때 컨테이너가 새 내용을 본다
       - ./caddy:/etc/caddy:ro
       - caddy_data:/data
       - caddy_config:/config
 
+  app:
+    # deploy.sh 가 .env 의 TADAK_IMAGE 를 커밋 SHA 태그로 바꾼다. 기본값은 첫 배포 전 provision.sh 가 caddy만 띄울 때 해석용
+    image: ${TADAK_IMAGE:-ghcr.io/zoek1211/tadak-live:main}
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      # H2 DB 파일과 올린 영상(CHZZK_DATA_DIR=/data). 이 볼륨을 지우면 데이터가 사라진다
+      - tadak_data:/data
+    mem_limit: 6g
+
 volumes:
   caddy_data:
   caddy_config:
+  tadak_data:

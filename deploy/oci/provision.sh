@@ -273,11 +273,13 @@ ACME_CA="$ACME_PROD"
 echo "==> 설정 배포: deploy/vm -> /opt/tadak (인증서 발급처: $ACME_CA)"
 scp_deploy "$VM_CONFIG_DIR/compose.yaml" "deploy@$PUBLIC_IP:/opt/tadak/compose.yaml"
 scp_deploy "$VM_CONFIG_DIR/Caddyfile" "deploy@$PUBLIC_IP:/opt/tadak/caddy/Caddyfile"
-# .env 는 VM에서만 만든다(권한 600). 앱 비밀 값은 배포(deploy.sh)가 같은 파일에 더한다.
+scp_deploy "$VM_CONFIG_DIR/deploy.sh" "deploy@$PUBLIC_IP:/opt/tadak/deploy.sh"
+ssh_deploy 'chmod 755 /opt/tadak/deploy.sh'
+# .env 는 VM에서만 만든다(권한 600). 앱 설정·비밀 값은 배포(deploy.sh)가 같은 파일에 더한다.
 ssh_deploy "umask 077; touch /opt/tadak/.env; grep -vE '^(TADAK_HOST|TADAK_ACME_CA)=' /opt/tadak/.env > /opt/tadak/.env.new || true; \
   printf 'TADAK_HOST=%s\nTADAK_ACME_CA=%s\n' '$TADAK_HOST' '$ACME_CA' >> /opt/tadak/.env.new; mv /opt/tadak/.env.new /opt/tadak/.env"
-# up -d 는 .env 가 바뀌면 컨테이너를 다시 만들고, reload 는 Caddyfile 변경을 반영한다
-ssh_deploy 'cd /opt/tadak && docker compose up -d --remove-orphans --quiet-pull && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile'
+# Caddy만 띄우거나 갱신한다. 앱은 deploy.sh 가 이미지와 함께 다룬다(첫 배포 전에는 앱이 없어 502)
+ssh_deploy 'cd /opt/tadak && docker compose up -d --quiet-pull caddy && docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile'
 
 echo
 echo "완료: $SHAPE, 공인 IP $PUBLIC_IP, 주소 https://$TADAK_HOST"

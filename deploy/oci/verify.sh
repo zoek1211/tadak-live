@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
 # 외부(이 컴퓨터)에서 VM의 HTTPS를 확인한다. 하나라도 실패하면 종료 코드 1.
-#  1) https://<host>/ 가 200이고 본문이 기대 문구(시스템 신뢰 저장소로 인증서 검증)
+# 사용: verify.sh [--app]
+#  1) https://<host>/ 에 인증서 검증을 통과해 접속된다(시스템 신뢰 저장소)
 #  2) 인증서 발급자가 Let's Encrypt 운영 CA, SAN에 <host> 포함
 #  3) http://<host>/ 가 https://<host>/ 로 리다이렉트
 #  4) 외부에서 8080 연결 실패
+#  --app(앱 배포 뒤): 5) / 가 https 의 /broadcasts 로 가고 200, "타닥 라이브" 화면  6) /actuator/health UP  7) /actuator/env 404
+#                     8) 로그인 세션 쿠키(JSESSIONID)에 Secure
 # 필요 도구: curl, openssl. 주소는 deploy/oci/.state.env 의 TADAK_HOST, PUBLIC_IP.
-# 선택 환경변수: TADAK_EXPECT_BODY(기본 "tadak vm ok"), TADAK_ALLOW_STAGING=1(스테이징 인증서 허용, 1번은 -k)
+# 선택 환경변수: TADAK_ALLOW_STAGING=1(스테이징 인증서 허용, 1번은 -k)
 set -uo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STATE_FILE="$DIR/.state.env"
-EXPECT="${TADAK_EXPECT_BODY:-tadak vm ok}"
 ALLOW_STAGING="${TADAK_ALLOW_STAGING:-}"
+APP=0
+[[ "${1:-}" == "--app" ]] && APP=1
 
 for tool in curl openssl; do
   command -v "$tool" >/dev/null || { echo "필요한 도구가 없습니다: $tool" >&2; exit 1; }
@@ -27,16 +31,14 @@ fail() { echo "  실패: $1"; FAILED=1; }
 
 echo "==> 대상: https://$TADAK_HOST ($PUBLIC_IP)"
 
-# 1) HTTPS 응답
+# 1) HTTPS 접속(인증서 검증). 앱이 아직 없으면 Caddy가 502를 내도 접속 자체는 통과
 insecure=()
 [[ "$ALLOW_STAGING" == "1" ]] && insecure=(-k)
-body="$(curl -sS --max-time 15 ${insecure[@]+"${insecure[@]}"} -o - -w '\n%{http_code}' "https://$TADAK_HOST/" 2>&1)"
-code="${body##*$'\n'}"
-text="${body%$'\n'*}"
-if [[ "$code" == "200" && "$text" == "$EXPECT" ]]; then
-  pass "HTTPS 200, 본문 '$EXPECT'"
+code="$(curl -sS --max-time 15 ${insecure[@]+"${insecure[@]}"} -o /dev/null -w '%{http_code}' "https://$TADAK_HOST/" 2>&1)"
+if [[ "$code" =~ ^[0-9]{3}$ && "$code" != "000" ]]; then
+  pass "HTTPS 접속(응답 코드 $code)"
 else
-  fail "HTTPS 응답이 다릅니다(코드 $code, 본문 '$(head -c 120 <<<"$text")')"
+  fail "HTTPS 접속 실패: $code"
 fi
 
 # 2) 인증서 발급자·SAN
@@ -65,6 +67,30 @@ if curl -s --max-time 6 --connect-timeout 5 -o /dev/null "http://$PUBLIC_IP:8080
   fail "외부에서 8080 에 연결됩니다"
 else
   pass "외부에서 8080 연결 안 됨"
+fi
+
+if [[ $APP -eq 1 ]]; then
+  # 5) 방송 목록 화면
+  page="$(curl -sS -L --proto-redir =https --max-time 15 -w '\n%{http_code}' "https://$TADAK_HOST/" 2>&1)"
+  if [[ "${page##*$'\n'}" == "200" ]] && grep -q "타닥 라이브" <<<"$page"; then
+    pass "/ → https /broadcasts 200, 타닥 라이브 화면"
+  else
+    fail "/ 응답이 다릅니다(코드 ${page##*$'\n'})"
+  fi
+  # 6) 헬스
+  health="$(curl -sS --max-time 10 "https://$TADAK_HOST/actuator/health" 2>&1)"
+  if grep -q '"status":"UP"' <<<"$health"; then pass "/actuator/health UP"; else fail "/actuator/health: $health"; fi
+  # 7) 다른 actuator 비공개
+  env_code="$(curl -s --max-time 10 -o /dev/null -w '%{http_code}' "https://$TADAK_HOST/actuator/env")"
+  if [[ "$env_code" == "404" ]]; then pass "/actuator/env 404"; else fail "/actuator/env 코드 $env_code"; fi
+  # 8) 로그인이 필요한 화면에 비로그인으로 가면 세션이 생긴다(돌아갈 주소 저장). 데이터는 만들지 않는다
+  cookie="$(curl -sS --max-time 10 -o /dev/null -D - "https://$TADAK_HOST/broadcasts/new" | tr -d '\r' \
+    | grep -i '^set-cookie: JSESSIONID=' | head -n 1)"
+  if grep -qi '; *Secure' <<<"$cookie"; then
+    pass "세션 쿠키 Secure"
+  else
+    fail "세션 쿠키에 Secure가 없습니다: ${cookie:-JSESSIONID 없음}"
+  fi
 fi
 
 if [[ $FAILED -eq 0 ]]; then
