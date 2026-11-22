@@ -48,3 +48,9 @@ data/
 
 ### OCI 배포 로컬 상태 (OCID·IP, 커밋 금지) ###
 deploy/oci/.state.env
+
+### 데스크톱 앱 빌드 산출물 ###
+desktop/node_modules/
+desktop/dist/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/schemas/
