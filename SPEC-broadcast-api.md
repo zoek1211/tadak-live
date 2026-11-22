@@ -1,6 +1,6 @@
 # Spec: broadcast-api — V1
 
-Status: approved (2026-11-22) · 모듈 지도: `CAPABILITY-MAP.md` · 의도: `docs/intent/oci-deploy.md` · 공개는 `backend-deploy`(implemented)로
+Status: implemented (2026-11-22) · 모듈 지도: `CAPABILITY-MAP.md` · 의도: `docs/intent/oci-deploy.md` · 공개는 `backend-deploy`(implemented)로
 
 ## Objective
 
