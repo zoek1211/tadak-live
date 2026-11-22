@@ -1,6 +1,6 @@
 # Spec: backend-deploy — V1
 
-Status: approved (2026-11-22) · 모듈 지도: `CAPABILITY-MAP.md` · 의도: `docs/intent/oci-deploy.md` · 앞 모듈: `SPEC-vm-host.md`(implemented)
+Status: implemented (2026-11-22) · 모듈 지도: `CAPABILITY-MAP.md` · 의도: `docs/intent/oci-deploy.md` · 앞 모듈: `SPEC-vm-host.md`(implemented)
 
 ## Objective
 
