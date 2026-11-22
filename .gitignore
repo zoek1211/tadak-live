@@ -45,3 +45,6 @@ data/
 ### 로컬 HTTPS 키스토어 (커밋 금지) ###
 *.p12
 *.jks
+
+### OCI 배포 로컬 상태 (OCID·IP, 커밋 금지) ###
+deploy/oci/.state.env
