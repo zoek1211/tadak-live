@@ -1,10 +1,11 @@
-# 주소와 인증서 발급처는 .env 에서 받는다. HTTP는 Caddy가 자동으로 HTTPS로 넘긴다.
+# 주소와 인증서 발급처는 compose.yaml 이 넘기는 환경변수에서 받는다. HTTP는 Caddy가 자동으로 HTTPS로 넘긴다.
 {
 	# Let's Encrypt만 쓴다(Caddy 기본값은 실패 시 ZeroSSL로 넘어감). 스테이징 확인 때는 provision.sh 가 스테이징 주소를 넣는다.
 	acme_ca {$TADAK_ACME_CA:https://acme-v02.api.letsencrypt.org/directory}
 }
 
 {$TADAK_HOST} {
-	# vm-host 단계의 고정 응답. backend-deploy 에서 reverse_proxy 로 바꾼다.
-	respond "tadak vm ok" 200
+	# 앱(Compose 내부 app:8080)으로 보낸다. WebSocket(/ws/**)과 큰 업로드도 기본 설정으로 통과한다.
+	# X-Forwarded-Proto/Host 를 붙이므로 앱(forward-headers-strategy=framework)이 https 공개 주소를 만든다.
+	reverse_proxy app:8080
 }

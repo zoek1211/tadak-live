@@ -1,0 +1,137 @@
+name: Deploy
+
+# main 에 푸시(PR 병합)하면 테스트 → ARM64 이미지(GHCR) → VM 배포. 수동 재배포는 gh workflow run deploy.yml
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  # ci.yml 의 필수 검사 이름(test)과 헷갈리지 않게 이름을 다르게 둔다
+  deploy-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: 테스트
+        run: ./gradlew test
+
+  image:
+    needs: deploy-test
+    # VM(A1)과 같은 arm64 러너에서 기존 Dockerfile 로 빌드한다(에뮬레이션 없음)
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: 이미지 빌드·푸시
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:main
+          # 패키지를 이 저장소에 연결해 배포 작업의 GITHUB_TOKEN 으로 받을 수 있게 한다
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    # 배포는 한 번에 하나씩. 진행 중인 배포를 끊지 않는다
+    concurrency:
+      group: deploy-vm
+      cancel-in-progress: false
+    env:
+      TADAK_HOST: ${{ vars.TADAK_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH 준비(배포 키, 고정한 호스트 키)
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          VM_SSH_KNOWN_HOSTS: ${{ vars.VM_SSH_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$VM_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # TADAK_HOST(대시 표기 sslip.io)는 공인 IP로 풀린다. 호스트 키는 IP로 고정돼 있으니 IP로 접속한다
+          VM_IP="$(printf '%s' "$VM_SSH_KNOWN_HOSTS" | awk '!/^#/ && NF {print $1; exit}')"
+          test -n "$VM_IP"
+          echo "VM=deploy@$VM_IP" >> "$GITHUB_ENV"
+
+      - name: VM에 설정 올리기
+        run: |
+          SSH=(-i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes)
+          scp "${SSH[@]}" deploy/vm/compose.yaml deploy/vm/deploy.sh "$VM:/opt/tadak/"
+          scp "${SSH[@]}" deploy/vm/Caddyfile "$VM:/opt/tadak/caddy/Caddyfile"
+          ssh "${SSH[@]}" "$VM" 'chmod 755 /opt/tadak/deploy.sh'
+
+      - name: GHCR 로그인(VM)
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$VM" \
+            "docker login ghcr.io -u '$GHCR_USER' --password-stdin >/dev/null && echo 로그인됨"
+
+      - name: 새 이미지로 교체(실패 시 VM이 이전 이미지로 되돌림)
+        env:
+          TOSS_CLIENT_KEY: ${{ secrets.TOSS_CLIENT_KEY }}
+          TOSS_SECRET_KEY: ${{ secrets.TOSS_SECRET_KEY }}
+          CHZZK_TURN_URL: ${{ secrets.CHZZK_TURN_URL }}
+          CHZZK_TURN_USERNAME: ${{ secrets.CHZZK_TURN_USERNAME }}
+          CHZZK_TURN_CREDENTIAL: ${{ secrets.CHZZK_TURN_CREDENTIAL }}
+        run: |
+          # 비밀 값은 명령 줄이 아니라 표준 입력으로 넘긴다. 빈 값은 보내지 않는다(VM .env 에서 지워짐)
+          secrets() {
+            for key in TOSS_CLIENT_KEY TOSS_SECRET_KEY CHZZK_TURN_URL CHZZK_TURN_USERNAME CHZZK_TURN_CREDENTIAL; do
+              if [ -n "${!key}" ]; then printf '%s=%s\n' "$key" "${!key}"; fi
+            done
+          }
+          secrets | ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$VM" \
+            "/opt/tadak/deploy.sh '$IMAGE:$GITHUB_SHA' --secrets-from-stdin"
+
+      - name: GHCR 로그아웃(VM)
+        if: always()
+        run: ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$VM" 'docker logout ghcr.io >/dev/null 2>&1 || true'
+
+      - name: 외부에서 헬스 확인
+        run: |
+          curl -fsS --max-time 15 "https://$TADAK_HOST/actuator/health" | grep '"status":"UP"'
+
+      - name: 배포 키 지우기
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

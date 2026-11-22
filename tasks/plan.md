@@ -1,51 +1,53 @@
-# Implementation Plan: vm-host
+# Implementation Plan: backend-deploy
 
-Source spec: `SPEC-vm-host.md` · 모듈 지도: `CAPABILITY-MAP.md`
+Source spec: `SPEC-backend-deploy.md` · 모듈 지도: `CAPABILITY-MAP.md` · 이전 모듈 계획: `tasks/plan-vm-host.md`
 
-**상태: 완료(2026-11-22).** #2~#7 모두 닫힘, 스펙 완료 기준 1~9 통과(#7). 작업은 GitHub Issues(`zoek1211/tadak-live`)에서 관리한다. 부모 이슈 #1 아래 하위 이슈이고, 순서는 GitHub의 차단(blocked-by) 관계로 걸려 있다. 작업 내용·완료 조건은 각 이슈가 기준이다.
+작업은 GitHub Issues에서 관리한다. 부모 이슈 #9 아래 하위 이슈이고, 순서는 차단(blocked-by) 관계로 걸려 있다. 작업 내용·완료 조건은 각 이슈가 기준이다.
 
 ## Overview
 
-로컬 Mac에서 OCI CLI 스크립트로 Always Free VM 한 대를 만들고, VM의 Docker Compose 위 Caddy가 `https://<공인IP>.sslip.io` 에 Let's Encrypt 인증서로 `tadak vm ok` 를 응답하게 한다. 위험이 큰 일(무료 재고·한도 확인)을 맨 앞에 둔다.
+앱 설정 한 줄(쿠키 Secure)을 더하고, VM에 CI 전용 `deploy` 사용자를 만들고, Compose에 앱을 붙여 **로컬에서 만든 이미지로 먼저 손 배포**해 VM 쪽 경로(`deploy.sh`, Caddy 프록시, 볼륨, 되돌림)를 검증한다. 그다음 같은 `deploy.sh` 를 호출하는 Actions 워크플로를 붙여 `main` 푸시 자동 배포로 바꾼다. 위험이 큰 VM 쪽 경로를 CI보다 먼저 확인해서, 워크플로 디버깅이 "푸시하고 기다리기"의 반복이 되지 않게 한다.
 
 ## Architecture Decisions
 
-- **cloud-init은 처음 한 번만, 설정 배포는 SSH로.** cloud-init은 Docker 설치와 OS 방화벽만 맡는다. `deploy/vm/` 의 compose.yaml·Caddyfile은 `provision.sh` 가 매번 scp로 올리고 `docker compose up -d` 한다. 그래야 `backend-deploy` 가 같은 경로로 설정을 바꿀 수 있고 재실행이 설정 변경을 반영한다.
-- **Ubuntu OCI 이미지의 iptables.** OCI Ubuntu 이미지는 보안 목록과 별개로 `/etc/iptables/rules.v4` 에 REJECT 규칙이 있다. cloud-init에서 80/443 ACCEPT를 REJECT 앞에 넣고 `netfilter-persistent save` 한다(보안 목록만 열면 접속이 안 됨).
-- **재실행 안전.** 모든 자원은 `tadak-` 이름 + `project=tadak-live` 태그로 찾아 있으면 재사용한다.
-- **인증서는 스테이징 먼저.** Caddyfile의 CA를 환경변수로 바꿀 수 있게 하고, 처음엔 스테이징으로 발급 경로를 확인한 뒤 운영 CA로 바꾼다.
-- **로컬 도구:** `oci-cli`, `jq`, `shellcheck` 를 Homebrew로 설치한다. 저장소 의존성은 늘지 않는다.
+- **VM 배포 로직은 `deploy/vm/deploy.sh` 한 곳.** 손 배포와 CI 배포가 같은 스크립트를 부른다. 워크플로는 파일을 올리고 `deploy.sh <이미지>` 를 호출할 뿐이다.
+- **`deploy.sh` 계약:** 인자로 이미지 참조를 받는다. 표준 입력이 있으면 앱 비밀 값 줄(`TOSS_*`, `CHZZK_TURN_*`)로 보고 `.env` 의 해당 줄만 바꾼다(`TADAK_HOST`·`TADAK_ACME_CA` 는 유지). 레지스트리 로그인은 호출하는 쪽(CI)이 미리 한다. 순서: 이전 `TADAK_IMAGE` 기록 → 새 이미지 `docker pull`(로컬에 있으면 생략) → `.env` 갱신 → `docker compose up -d` → `caddy reload` → 헬스 대기(2분) → 실패 시 이전 이미지로 되돌리고 종료 코드 1.
+- **헬스 확인은 VM 안에서.** `docker compose exec app` 대신 Caddy를 거쳐 `https://$TADAK_HOST/actuator/health` 를 VM에서 호출한다(JRE 이미지에 curl이 있다고 가정하지 않음, 외부 경로 전체를 확인).
+- **손 배포 이미지 전달:** 로컬 Mac(arm64)에서 `docker build` → `docker save | ssh ... docker load`. 레지스트리 없이 VM 경로를 검증한다.
+- **CI 워크플로는 `ci.yml` 과 별도(`deploy.yml`).** `ci.yml` 은 바꾸지 않는다(Boundaries). `deploy.yml` 안에서 test 작업을 다시 돌린다.
 
 ## Task List
 
 | 순서 | 이슈 | 작업 | 차단하는 이슈 | 라벨 |
 |---|---|---|---|---|
-| 1 | #2 | OCI 로그인과 Pay As You Go 전환 (사용자) | — | ready-for-human |
-| 2 | #3 | 읽기 전용 점검 `preflight.sh` | #2 | ready-for-agent |
-| 3 | #4 | 과금 감시 `budget.sh` | #2 | ready-for-agent |
-| — | | **Checkpoint 계정과 한도:** preflight 결과로 shape(A1/E2)와 공인 IP 방식 확정, 예산 알림 확인 | | |
-| 4 | #5 | 네트워크와 인스턴스 생성 `provision.sh` | #3, #4 | ready-for-agent |
-| 5 | #6 | Caddy HTTPS와 외부 확인 `verify.sh` | #5 | ready-for-agent |
-| — | | **Checkpoint HTTPS:** 브라우저로 경고 없이 `tadak vm ok` | | |
-| 6 | #7 | 재부팅·포트·비용·저장소 점검 | #6 | ready-for-agent |
-| — | | **Checkpoint 완료:** 스펙 완료 기준 1~9 통과, 사용자 검토 후 `SPEC-vm-host.md` Status를 implemented로 | | |
+| 1 | #10 | 세션 쿠키 Secure 설정 | — | ready-for-agent |
+| 2 | #11 | VM `deploy` 사용자와 CI 전용 키 | — | ready-for-agent |
+| 3 | #12 | GitHub Secrets·변수 입력 (사용자) | #11 | ready-for-human |
+| 4 | #13 | Compose 앱·Caddy 프록시·`deploy.sh` 로 첫 배포 | #10, #11 | ready-for-agent |
+| — | | **Checkpoint 손 배포:** 브라우저로 로그인·업로드·재생 확인 | | |
+| 5 | #14 | `deploy.yml` 워크플로 | #12, #13 | ready-for-agent |
+| 6 | #15 | README와 `.env.example` | #13 | ready-for-agent |
+| 7 | #16 | 재배포·후원·비밀 값 점검 | #14, #15 | ready-for-agent |
+| — | | **Checkpoint 완료:** 스펙 완료 기준 1~11, 사용자 검토 후 Status implemented | | |
 
 ## 병렬 가능
 
-- #3과 #4는 서로 독립(둘 다 #2만 필요).
-- `broadcast-api` 모듈은 이 계획 전체와 독립이라 따로 진행할 수 있다(별도 스펙 필요).
+- #10, #11은 서로 독립. #12는 #11 뒤 언제든(사용자).
+- #15는 #13 뒤 #14와 병렬.
+- `broadcast-api` 모듈은 이 계획과 독립(별도 스펙).
 
 ## Risks and Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| A1 재고 부족(인기 리전에서 흔함) | High | #3에서 먼저 확인, 6회 재시도 후 E2.1.Micro. E2는 1GB 메모리라 `backend-deploy` 에서 JVM 메모리 설정을 줄여야 함 |
-| Ubuntu 이미지 iptables가 80/443 차단 | Med | cloud-init에서 규칙 추가, `verify.sh` 로 확인 |
-| Let's Encrypt 발급 한도 | Med | 스테이징 CA로 먼저 확인, 운영 발급은 한 번 |
-| 세션 토큰 1시간 만료(재시도 루프 중) | Low | `oci session refresh`, 실패 시 재로그인 안내 후 종료(재실행 안전) |
-| 실수로 유료 자원 생성(PAYG 계정) | Med | #4 예산 알림을 #5보다 먼저, 스크립트는 Always Free shape만 허용 |
-| sslip.io 장애 | Low | 임시 주소일 뿐, `custom-domain` 에서 자체 도메인으로 대체 |
+| Caddy 뒤에서 쿠키·리다이렉트 URL이 http로 나옴 | Med | #10 Secure 설정, `verify.sh --app` 이 쿠키·토스 리다이렉트 기준 확인 |
+| 첫 배포에서 H2 파일 권한 문제(비루트 uid 10001과 볼륨) | Med | Dockerfile이 `/data` 를 10001 소유로 만든다. 새 이름 볼륨은 이미지 경로 소유권을 따른다. #13에서 확인 |
+| ARM 러너 대기·실패 | Low | 공개 저장소 무료 러너. 실패 시 QEMU(`setup-qemu-action`)로 x86 러너에서 빌드하는 대안 |
+| 배포 작업이 비밀 값을 로그에 찍음 | High | `env:` 로만 전달, VM 쪽은 표준 입력으로 받기, `set -x` 금지, #16에서 로그 검색 |
+| 잘못된 이미지로 서비스 중단 | Med | `deploy.sh` 헬스 실패 시 자동 되돌림, #13에서 실제로 시험 |
+| `main` 보호 규칙의 필수 검사 `test` 가 deploy.yml의 `test` 와 이름이 겹침 | Low | 둘 다 같은 커밋 테스트라 의미가 같다. 혼동되면 deploy.yml 작업 이름을 `deploy-test` 로 |
+| H2 단일 파일에 쌓인 데이터 유실(VM 장애) | Med | 이번 범위 밖(백업은 V2). README에 백업 없음 명시 |
 
 ## Open Questions
 
-- 없음. shape와 공인 IP 방식은 Checkpoint "계정과 한도"에서 preflight 결과로 정한다.
+- 없음.

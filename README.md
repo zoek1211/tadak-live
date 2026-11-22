@@ -8,12 +8,15 @@
 - **후원:** 토스페이먼츠 테스트 결제로 방송한 사람에게 후원합니다. 서버가 토스에 승인을 다시 확인한 뒤에만 합계에 더합니다.
 - **여러 인스턴스:** 같은 서버를 로컬 Kubernetes(kind)에 여러 개 띄우고, 부하에 따라 2~5개로 자동으로 늘고 줄어도 로그인·방송·댓글·라이브가 유지됩니다.
 
+**공개 주소:** <https://129-221-138-89.sslip.io> (OCI 무료 VM 한 대, `main` 에 합치면 자동 배포. [공개 서버](#공개-서버oci-무료-vm))
+
 ## 목차
 
 - [빠른 실행](#빠른-실행)
 - [휴대폰으로 송출하기](#휴대폰으로-송출하기)
 - [후원 켜기](#후원-켜기)
 - [여러 인스턴스로 실행하기](#여러-인스턴스로-실행하기)
+- [공개 서버(OCI 무료 VM)](#공개-서버oci-무료-vm)
 - [환경변수](#환경변수)
 - [기술 구성](#기술-구성)
 - [이 프로젝트의 출발점](#이-프로젝트의-출발점)
@@ -80,6 +83,37 @@ scripts/cluster-down.sh     # 클러스터 삭제
 
 이 구성에서는 인스턴스가 언제든 생기고 사라지므로 상태를 모두 서버 밖에 둡니다. 회원·방송·댓글·후원은 Postgres, 로그인 세션과 라이브 방 상태는 Redis, 올린 영상은 공유 볼륨에 둡니다. 실제로 돌려 본 기록(인스턴스 2→5→2, 요청 597,305건 실패 0%, 상태 확인 91/91 유지)은 [docs/scale-check/](docs/scale-check/)에 있습니다.
 
+## 공개 서버(OCI 무료 VM)
+
+<https://129-221-138-89.sslip.io> 에서 단독 모드(파일 기반 H2 + 디스크) 서버 하나가 돕니다. 설계와 완료 기준은 [CAPABILITY-MAP.md](CAPABILITY-MAP.md), [SPEC-vm-host.md](SPEC-vm-host.md), [SPEC-backend-deploy.md](SPEC-backend-deploy.md)에 있습니다.
+
+**서버:** Oracle Cloud Always Free VM 한 대(싱가포르 리전), `VM.Standard.A1.Flex` 2 OCPU·12GB(arm64), Ubuntu 24.04. 무료 한도(A1 합계 4 OCPU·24GB) 안에서 가장 넉넉한 사양이라 골랐습니다. 만들기 전 점검(`deploy/oci/preflight.sh`)에서 A1 한도가 모두 남아 있었고, 재고 부족 없이 첫 시도에 만들어졌습니다. 계정은 무료 인스턴스 회수를 피하려고 Pay As You Go로 바꾸고, 무료 한도 안 자원만 씁니다(월 1 USD 예산과 0.01 USD 초과 알림).
+
+**주소와 HTTPS:** 예약 공인 IP(인스턴스를 다시 만들어도 유지)와 [sslip.io](https://sslip.io) 임시 주소를 씁니다. Caddy가 Let's Encrypt 인증서를 받고 갱신하며, HTTP는 HTTPS로 넘깁니다. 인터넷에 열린 포트는 22·80·443뿐이고 앱(8080)은 Caddy 뒤에만 있습니다.
+
+**배포 흐름:** `main` 에 푸시(PR 병합)하면 [.github/workflows/deploy.yml](.github/workflows/deploy.yml)이 돕니다.
+
+1. 테스트
+2. arm64 러너에서 이미지 빌드 → GHCR `ghcr.io/zoek1211/tadak-live:<커밋 SHA>`
+3. VM에 SSH(CI 전용 `deploy` 사용자, 고정한 호스트 키)로 설정을 올리고 [deploy/vm/deploy.sh](deploy/vm/deploy.sh) 실행: 새 이미지로 교체 → 2분 안에 `/actuator/health` 가 `UP` 이 아니면 이전 이미지로 되돌리고 배포를 실패로 끝냄
+
+컨테이너를 바꾸는 동안 수 초 끊길 수 있습니다. DB 파일과 올린 영상은 Docker 볼륨 `tadak_data` 에 있어 재배포해도 남습니다. **백업은 아직 없습니다.**
+
+**처음 한 번 하는 일**(이미 되어 있음, 다시 만들 때만):
+
+```bash
+brew install oci-cli jq shellcheck
+oci session authenticate --profile-name tadak --region ap-singapore-1   # 브라우저 로그인(1시간)
+deploy/oci/preflight.sh                                      # 무료 한도 점검(아무것도 만들지 않음)
+TADAK_BUDGET_EMAIL=<알림 주소> deploy/oci/budget.sh          # 과금 알림
+deploy/oci/provision.sh                                      # 네트워크·VM·예약 IP·Caddy·deploy 사용자(재실행 안전)
+deploy/oci/verify.sh --app                                   # 외부에서 HTTPS·앱·헬스·쿠키 확인
+```
+
+GitHub에는 Secret `VM_SSH_KEY`(CI 배포 키 `~/.ssh/tadak_deploy` 의 비밀 키), `TOSS_CLIENT_KEY`, `TOSS_SECRET_KEY`(선택: `CHZZK_TURN_URL`, `CHZZK_TURN_USERNAME`, `CHZZK_TURN_CREDENTIAL`)와 변수 `TADAK_HOST`, `VM_SSH_KNOWN_HOSTS` 를 둡니다. 비밀 값의 원본은 GitHub Secrets이고, 배포할 때마다 VM의 `/opt/tadak/.env`(권한 600)에 다시 씁니다. 수동 재배포는 `gh workflow run deploy.yml` 입니다.
+
+**한계:** TURN 서버가 없어서 서로 다른 네트워크(예: LTE 방송자와 집 Wi-Fi 시청자) 사이에서는 라이브 영상이 안 올 수 있습니다. 녹화방송은 영향이 없습니다. 자체 도메인(`zoek.im`)은 등록이 끝나면 옮길 예정입니다.
+
 ## 환경변수
 
 모두 선택 사항이고, 예시는 [.env.example](.env.example)에 있습니다. 비밀 값(TURN 자격 증명, 키스토어 비밀번호, 토스 시크릿 키, DB 비밀번호)은 커밋하지 말고 실행 환경에서만 설정하세요. 변수 이름의 `CHZZK_` 접두어는 출발점이었던 과제 이름을 그대로 쓴 것입니다.
@@ -97,6 +131,7 @@ scripts/cluster-down.sh     # 클러스터 삭제
 | `CHZZK_SSL_KEY_STORE` / `CHZZK_SSL_KEY_STORE_PASSWORD` / `CHZZK_SSL_KEY_STORE_TYPE` | (없음) / (없음) / `PKCS12` | HTTPS 키스토어 |
 | `TOSS_CLIENT_KEY` / `TOSS_SECRET_KEY` | (없음) | 토스페이먼츠 테스트 키. 둘 다 있어야 후원이 켜짐 |
 | `TOSS_CONNECT_TIMEOUT` / `TOSS_READ_TIMEOUT` | `5s` / `10s` | 토스 API 제한 시간 |
+| `CHZZK_COOKIE_SECURE` | `false` | `true` 면 로그인 세션 쿠키에 Secure를 붙임. HTTPS 프록시 뒤 배포에서만 켬(로컬 `http://localhost` 에서 켜면 로그인이 유지되지 않음) |
 
 클러스터 모드(`SPRING_PROFILES_ACTIVE=cluster`) 전용 변수(`CHZZK_DB_*`, `CHZZK_REDIS_*`, `CHZZK_INSTANCE_ID`)는 k8s 매니페스트([k8s/chzzk.yaml](k8s/chzzk.yaml))가 설정하므로 직접 정할 필요가 없습니다. 전체 표는 [과제 문서의 환경변수](docs/chzzk-assignment-README.md#환경변수)에 있습니다.
 
@@ -104,6 +139,7 @@ scripts/cluster-down.sh     # 클러스터 삭제
 
 - Java 25, Spring Boot 4.1, Spring MVC + Thymeleaf, Spring Data JPA, Spring WebSocket, Spring Security(세션 로그인·CSRF)
 - 저장소: 단독 실행은 파일 기반 H2 + 로컬 디스크, 클러스터 실행은 Postgres + Redis + 공유 볼륨
+- 배포: OCI Always Free VM, Docker Compose(앱 + Caddy), GitHub Actions → GHCR
 - 설계 결정: [docs/adr/](docs/adr/)
   - [WebRTC P2P 라이브](docs/adr/0001-webrtc-p2p-live.md)
   - [송출 키 대신 로그인한 소유자 검사](docs/adr/0002-live-owner-session-replaces-broadcast-key.md)
