@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # README 검사가 step-* 태그 시점의 README를 읽는다
 
       - uses: actions/setup-java@v4
         with:
@@ -22,6 +20,3 @@ jobs:
 
       - name: 테스트 (./data 생성 시 실패)
         run: ./gradlew test
-
-      - name: README 누적 규칙 검사
-        run: python3 scripts/check_readme_stages.py

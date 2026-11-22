@@ -1,14 +1,14 @@
 # AGENTS.md
 
-## 과제 단계 진행
+## 개발 함정
 
-치지직 과제의 다음 단계를 진행하거나 제출할 때는 `docs/agents/assignment-workflow.md`를 따른다.
+테스트 데이터 디렉터리, `hidden` 속성 같은 자주 걸리는 함정은 `docs/agents/assignment-workflow.md`의 "함정"에 있다. 그 문서의 과제 단계 진행·README 규칙은 zoek1211/chzzk 제출용이고 이 저장소에는 적용하지 않는다.
 
 ## Agent skills
 
 ### Issue tracker
 
-Issues live in GitHub Issues for zoek1211/chzzk (gh CLI). See `docs/agents/issue-tracker.md`.
+Issues live in GitHub Issues for zoek1211/tadak-live (gh CLI). See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

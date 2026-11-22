@@ -29,5 +29,5 @@
 
 ## README
 
-- 단계별 누적 규칙은 `docs/agents/assignment-workflow.md`의 "README 규칙"을 따르고, CI(`scripts/check_readme_stages.py`)가 검사한다.
+- README는 타닥 라이브 사용 안내다. 제출 당시 과제 README(`docs/chzzk-assignment-README.md`)는 기록이므로 고치지 않는다.
 - README의 경로·응답 코드·환경변수 설명은 코드와 일치해야 한다. 리뷰어는 이번 diff가 바꾼 경로를 README와 대조한다.
