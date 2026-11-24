@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <!-- 타닥 라이브 앱 아이콘: 밤색 바탕 위 불꽃(웹 헤더 로고와 같은 모양) -->
+  <!-- 타닥 라이브 앱 아이콘: 밤색 바탕 위 얼굴 있는 불꽃 캐릭터(웹 헤더 로고와 같은 모양) -->
   <rect x="64" y="64" width="896" height="896" rx="200" fill="#16120f"/>
   <g transform="translate(512 528) scale(30) translate(-12 -12)">
     <path d="M12 2c1 3.2-1.6 4.8-1.6 7.6 0 1.4 1 2.4 2.2 2.4 1.4 0 2.2-1.1 2-2.9 2.3 1.7 3.4 4.1 3.4 6.4A6 6 0 0 1 12 21.5a6 6 0 0 1-6-6c0-4.6 4.6-7.2 6-13.5Z" fill="#ff7a2f"/>
-    <path d="M12 14.2c.6 1.3-.8 2-.8 3.2a1.6 1.6 0 0 0 3.2 0c0-1.1-.9-2.3-2.4-3.2Z" fill="#ffc56b"/>
+    <ellipse cx="10" cy="16" rx="1" ry="1.3" fill="#2a1a12"/><ellipse cx="14" cy="16" rx="1" ry="1.3" fill="#2a1a12"/><circle cx="10.35" cy="15.45" r=".38" fill="#fff"/><circle cx="14.35" cy="15.45" r=".38" fill="#fff"/><ellipse cx="8.25" cy="18.25" rx="1.1" ry=".65" fill="#ffc56b"/><ellipse cx="15.75" cy="18.25" rx="1.1" ry=".65" fill="#ffc56b"/>
   </g>
 </svg>
